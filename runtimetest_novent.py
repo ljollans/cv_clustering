@@ -49,9 +49,6 @@ mainfolds_subfolds = [
     np.repeat(np.arange(n_cv_folds), n_cv_folds),
     np.tile(np.arange(n_cv_folds), n_cv_folds),
 ]
-mainfold = mainfolds_subfolds[0][current_fold].astype(int)
-subfold = mainfolds_subfolds[1][current_fold].astype(int)
-covariance = sys.argv[3]
 
 # data import
 if current_set >= len(sets):
@@ -62,18 +59,20 @@ else:
 with open(data_path, "r") as f:
     reader = csv.reader(f, delimiter=",")
     data = np.array(list(reader)).astype(float)
-X = data
-
-n_samples = X.shape[0]
-n_features = X.shape[1]
 
 # clustering
 os.chdir((system_base_directory + "ML_in_python/export_251019/jan2020"))
 from clusmetwrapper import clusmetwrapper
 
-[all_clus_labels, BIC, SIL, CAL, AUC, F1, BETAS] = clusmetwrapper(
-    [X, cv_assignment, mainfold, subfold, covariance]
-)
+inputs = {
+    "X": data,
+    "cv_assignment": cv_assignment,
+    "mainfold": mainfolds_subfolds[0][current_fold].astype(int),
+    "subfold": mainfolds_subfolds[1][current_fold].astype(int),
+    "covariance": sys.argv[3],
+    "n_ks": n_ks,
+}
+[all_clus_labels, BIC, SIL, CAL, AUC, F1, BETAS] = clusmetwrapper(**inputs)
 
 # save
 dumpthese = ["BIC", "SIL", "CAL", "all_clus_labels", "AUC", "F1", "BETAS"]

@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy as np
-from itertools import product
 import os
 os.chdir('/u/ljollans/ML_in_python/export_251019/jan2020')
 import clusmets
 from clusmets import clusmets
 
-def clusmetwrapper(A): 
-    X=A[0]
-    CVassig=A[1]
-    mainfold=A[2].astype(int)
-    subfold=A[3].astype(int)
-    covariance2use=A[4]
 
-    n_ks=8
+def clusmetwrapper(X, CVassig,mainfold,subfold,covariance2use,n_ks):
+
     n_samples=X.shape[0]
     n_features=X.shape[1]
 
