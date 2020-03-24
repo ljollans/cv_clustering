@@ -39,7 +39,7 @@ sets = [
     "Tct_Scs_tc_sc_s",
 ]
 n_cv_folds = 4
-n_ks = 3
+n_ks = 8
 with open((cv_assignment_dir + 'CVassig398.csv'), "r") as f:
     reader = csv.reader(f, delimiter=",")
     cv_assignment = np.array(list(reader)).astype(float)
