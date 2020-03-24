@@ -16,7 +16,7 @@ def looco_loop(x_all, covariance, k):
     looco_f1 = np.full([n_samples], np.nan)
     looco_betas = np.full([n_samples, k + 2, n_features], np.nan)
 
-    for looco in range(n_samples):
+    for looco in range(3): #(n_samples):
         x = np.delete(x_all, looco, axis=0)
         save_vector = np.delete(np.arange(n_samples),looco)
         [

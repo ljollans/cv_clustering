@@ -9,14 +9,18 @@ Created on Thu Jan 16 13:50:59 2020
 import csv
 import numpy as np
 import sys
+import pickle
 import os
 import time
+
+from clusmetwrapper import clusmetwrapper
 from utils import identify_set_and_fold
 
 seconds1 = time.time()
 
-system_base_directory = "/u/ljollans/"
-file_dir = system_base_directory + "ML_in_python/allresidsjan2/"
+input_files_dir='/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/'
+cv_assignment_dir='/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/'
+save_dir='/Users/lee_jollans/Projects/clustering_pilot/tstsave/'
 save_str = sys.argv[2]
 
 # presets
@@ -35,10 +39,8 @@ sets = [
     "Tct_Scs_tc_sc_s",
 ]
 n_cv_folds = 4
-n_ks = 8
-with open(
-    (system_base_directory + "ML_in_python/export_251019/CVassig398.csv"), "r"
-) as f:
+n_ks = 3
+with open((cv_assignment_dir + 'CVassig398.csv'), "r") as f:
     reader = csv.reader(f, delimiter=",")
     cv_assignment = np.array(list(reader)).astype(float)
 
@@ -52,17 +54,13 @@ mainfolds_subfolds = [
 
 # data import
 if current_set >= len(sets):
-    data_path = "/u/ljollans/MDD/MDD__" + sets[current_set - len(sets)] + "_ctrl.csv"
+    data_path = input_files_dir + "MDD__" + sets[current_set - len(sets)] + "_ctrl.csv"
 else:
-    data_path = "/u/ljollans/MDD/MDD__" + sets[current_set] + ".csv"
+    data_path = input_files_dir + "MDD__" + sets[current_set] + ".csv"
 
 with open(data_path, "r") as f:
     reader = csv.reader(f, delimiter=",")
     data = np.array(list(reader)).astype(float)
-
-# clustering
-os.chdir((system_base_directory + "ML_in_python/export_251019/jan2020"))
-from clusmetwrapper import clusmetwrapper
 
 inputs = {
     "X": data,
@@ -72,7 +70,7 @@ inputs = {
     "covariance": sys.argv[3],
     "n_ks": n_ks,
 }
-[all_clus_labels, BIC, SIL, CAL, AUC, F1, BETAS] = clusmetwrapper(**inputs)
+[all_clus_labels, BIC, SIL, CAL, AUC, F1, BETAS] = clusmetwrapper(inputs)
 
 # save
 dumpthese = ["BIC", "SIL", "CAL", "all_clus_labels", "AUC", "F1", "BETAS"]
@@ -81,7 +79,7 @@ for d in dumpthese:
         fold_string = "ctrl_fold" + str(current_fold) + ".pkl"
     else:
         fold_string = "_fold" + str(current_fold) + ".pkl"
-    pkl_filename = file_dir + save_str + sets[current_set] + d + fold_string
+    pkl_filename = save_dir + save_str + sets[current_set] + d + fold_string
     with open(pkl_filename, "wb") as file:
         eval("pickle.dump(" + d + ", file)")
 

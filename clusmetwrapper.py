@@ -8,6 +8,7 @@ from looco_loop import looco_loop
 def clusmetwrapper(design):
 
     X = design["X"]
+
     n_samples = X.shape[0]
     n_features = X.shape[1]
 
@@ -28,13 +29,15 @@ def clusmetwrapper(design):
 
     for nclus in range(design["n_ks"]):
         (
-            all_clus_labels[train_index_sub, nclus, :],
+            tmp_all_clus_labels,
             bic[train_index_sub, nclus],
             sil[train_index_sub, nclus],
             cal[train_index_sub, nclus],
             auc[train_index_sub, nclus],
             f1[train_index_sub, nclus],
-            betas[train_index_sub, nclus, :, :],
-        ) = looco_loop(x2, train_index_sub, design["covariance"], nclus)
+            betas[train_index_sub, nclus, :nclus+2, :]
+        ) = looco_loop(x2, design["covariance"], nclus)
+        for t in range(len(train_index_sub)):
+            all_clus_labels[train_index_sub[t],nclus,train_index_sub]=tmp_all_clus_labels[t,:]
 
     return all_clus_labels, bic, sil, cal, auc, f1, betas
