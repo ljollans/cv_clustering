@@ -27,7 +27,7 @@ def looco_loop(x_all, covariance, k):
             looco_auc[looco],
             looco_f1[looco],
             looco_betas[looco, :, :],
-        ] = clusmets([x, k, covariance])
+        ] = clusmets({'data':x, 'nclus':k, 'covariance':covariance})
 
     return (
         looco_all_clus_labels,
