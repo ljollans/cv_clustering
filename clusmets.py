@@ -9,8 +9,7 @@ import numpy as np
 from sklearn.mixture import GaussianMixture
 from sklearn import metrics
 import os
-os.chdir('/u/ljollans/ML_in_python/export_251019/jan2020')
-import multi_logr_bag
+
 from multi_logr_bag import multi_logr_bagr
 
 
@@ -25,7 +24,7 @@ def clusmets(A):
     # get cluster fit metrics
     BIC=gmm.bic(X2)
     SIL=metrics.silhouette_score(X2,cluslabels)
-    CAL=metrics.calinski_harabaz_score(X2,cluslabels)
+    CAL=metrics.calinski_harabasz_score(X2,cluslabels)
     # prep data for multi-class classification
     x=X2[np.where(cluslabels!=-1)[0],:] # not sure why i added this but there shouldn't be anyone with no assignment
     y=cluslabels[np.where(cluslabels!=-1)[0]]

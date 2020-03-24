@@ -18,9 +18,9 @@ def looco_loop(x_all, covariance, k):
 
     for looco in range(n_samples):
         x = np.delete(x_all, looco, axis=0)
-
+        save_vector = np.delete(np.arange(n_samples),looco)
         [
-            looco_all_clus_labels[looco, :],
+            looco_all_clus_labels[looco, save_vector],
             looco_bic[looco],
             looco_sil[looco],
             looco_cal[looco],
