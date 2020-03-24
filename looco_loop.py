@@ -28,3 +28,13 @@ def looco_loop(x_all, covariance, k):
             looco_f1[looco],
             looco_betas[looco, :, :],
         ] = clusmets([x, k, covariance])
+
+    return (
+        looco_all_clus_labels,
+        looco_bic,
+        looco_sil,
+        looco_cal,
+        looco_auc,
+        looco_f1,
+        looco_betas,
+    )
