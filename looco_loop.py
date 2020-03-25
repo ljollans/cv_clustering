@@ -1,6 +1,6 @@
 import numpy as np
 import clusmets
-from clusmets import clusmets
+from clusmets import calculate_clustering_metrics
 
 
 def looco_loop(x_all, covariance, k):
@@ -27,7 +27,7 @@ def looco_loop(x_all, covariance, k):
             looco_auc[looco],
             looco_f1[looco],
             looco_betas[looco, :, :],
-        ] = clusmets({'data':x, 'nclus':k, 'covariance':covariance})
+        ] = calculate_clustering_metrics({'data':x, 'nclus':k, 'covariance':covariance})
 
     return (
         looco_all_clus_labels,

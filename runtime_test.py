@@ -27,7 +27,7 @@ Y = Y[ss.astype(int)]
     auc_partial,
     f1_partial,
     betas
-) = multi_logr_bagr(1, np.append(np.expand_dims(Y, axis=1), X, axis=1), 3, 3, 0)
+) = multi_logr_bagr(10, np.append(np.expand_dims(Y, axis=1), X, axis=1), 3, 3, 0)
 
 print(auc)
 print()

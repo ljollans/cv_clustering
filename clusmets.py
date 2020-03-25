@@ -11,7 +11,7 @@ from sklearn import metrics
 from multi_logr_bag import multi_logr_bagr
 
 
-def clusmets(design):
+def calculate_clustering_metrics(design):
     gmm = GaussianMixture(
         n_components=design["nclus"] + 2,
         covariance_type=design["covariance"],
@@ -25,22 +25,16 @@ def clusmets(design):
 
     x = design["data"][np.where(clus_labels != -1)[0], :]
     y = clus_labels[np.where(clus_labels != -1)[0]]
-    x_ytrain = np.append(np.expand_dims(y, 1), x, axis=1)
-    [
-        tmpauc,
-        tmpf1,
-        betas2use,
-        overallpred0,
-        overallpred,
-        aucs_partial,
-        f1s_partial,
-        tmpbetas,
-        groupclass,
-        correctclass,
-        problemrec,
-    ] = multi_logr_bagr(10, x_ytrain, design["nclus"] + 2, 4, 0)
-    auc = np.mean(tmpauc)
-    f1 = np.mean(tmpf1)
-    betas = np.nanmean(tmpbetas, axis=2).T
+    x_y_train = np.append(np.expand_dims(y, 1), x, axis=1)
+    (
+        auc_across_cv_folds,
+        f1_across_cv_folds,
+        beta_avg_across_folds,
+        overall_prediction_continuous,
+        overall_prediction_discrete,
+        auc_per_cv_fold,
+        f1_per_cv_fold,
+        betas_per_fold,
+    ) = multi_logr_bagr(10, x_y_train, design["nclus"] + 2, 4, 0)
 
-    return clus_labels, bic, sil, cal, auc, f1, betas
+    return clus_labels, bic, sil, cal, np.mean(auc_across_cv_folds), np.mean(f1_across_cv_folds), beta_avg_across_folds
