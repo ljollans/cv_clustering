@@ -26,11 +26,8 @@ Y = Y[ss.astype(int)]
     overall_prediction_discrete,
     auc_partial,
     f1_partial,
-    betas,
-    groupclass,
-    correctclass,
-    problemrec,
-) = multi_logr_bagr(100, np.append(np.expand_dims(Y, axis=1), X, axis=1), 3, 3, 0)
+    betas
+) = multi_logr_bagr(1, np.append(np.expand_dims(Y, axis=1), X, axis=1), 3, 3, 0)
 
 print(auc)
 print()
