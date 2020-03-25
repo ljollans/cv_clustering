@@ -4,64 +4,46 @@ from sklearn.metrics import roc_auc_score, f1_score, roc_curve
 from random import randrange
 
 
-# function for carrying out the regression
-def log_in_CV(x2use, y2use, nclus):
-    # we'll be making a classifier for each group separately
-    allbetas = np.zeros(
-        shape=[x2use.shape[1], nclus]
-    )  # pre-allocate the array because we'll be filling it step by step
-    u = set(y2use)  # the unique values for y, i.e. the groups we have
-    ctr = (
-        -1
-    )  # we're starting a counter because the groups might be [2,3,4] but we want to populate the array as [0,1,2]
-    for n in u:  # loop over the groups
+def bag_log(x, y, n_bags, n_groups):
+    all_betas = np.zeros(shape=[x.shape[1], n_groups, n_bags])
+    for i in range(n_bags):
+        bootstrapping_idx = subsample(x, 0.666)
+        x_bootstrapped = x[bootstrapping_idx, :]
+        y_bootstrapped = y[bootstrapping_idx]
+        all_betas[:, :, i] = log_in_CV(x_bootstrapped, y_bootstrapped, n_groups)
+    betas = np.nanmean(all_betas, axis=2)
+    return betas
+
+
+def log_in_CV(x, y, n_groups):
+    all_betas = np.zeros(shape=[x.shape[1], n_groups])
+    u = set(y)
+    ctr = -1
+    for n in u:
         ctr += 1
-        y = np.zeros(shape=[y2use.shape[0]])
-        y[np.where(y2use == n)] = 1
-        # now there are just 2 groups: those in my target group and those outside my target group
-        clf = LogisticRegression(random_state=0, solver="lbfgs")
-        try:
-            res = clf.fit(x2use, y)
-            #        try:
-            allbetas[
-            :, n.astype(int)
-            ] = (
-                clf.coef_
-            )  # n instead of ctr because i want to maintain the correct order even if a class is missing in this subset of the data
-        #        except:
-        #            print(Yboot.shape)
-        #            print(np.sum(Yboot))
-        except:
-            print("only one class for " + str(nclus))
-    return allbetas
+        dummy_coded_y = np.zeros(shape=[y.shape[0]])
+        dummy_coded_y[np.where(y == n)] = 1
+        n_groups_in_dummy_y = len(set(dummy_coded_y))
+        if n_groups_in_dummy_y>1:
+            clf = LogisticRegression(random_state=0, solver="lbfgs")
+            res = clf.fit(x, dummy_coded_y)
+            all_betas[:, n.astype(int)] = (clf.coef_)
+        else:
+            print("only one class for " + str(n_groups))
+    return all_betas
 
 
-def subsample(dataset, ratio=1.0):
-    totalN = dataset.shape[0]
+def subsample(x, ratio=1.0):
+    n = x.shape[0]
     sample = list()
-    n_sample = round(len(dataset) * ratio)
+    n_sample = round(len(x) * ratio)
     while len(set(sample)) < n_sample:
-        index = randrange(len(dataset))
+        index = randrange(len(x))
         sample.append(index)
-    while len(sample) < totalN:
+    while len(sample) < n:
         index = randrange(len(sample))
         sample.append(sample[index])
     return sample
-
-
-# add bootstrapping to the function that carries out the regression
-def bag_log(x2use, y2use, nboot, nclus):
-    allbetas = np.zeros(shape=[x2use.shape[1], nclus, nboot])  # pre-allocate
-    for i in range(nboot):
-        # get and select the bootstrap sample
-        bootidc = subsample(x2use, 0.666)
-        Xboot = x2use[bootidc, :]
-        Yboot = y2use[bootidc]
-        # run it through the regression and save regression weights
-        allbetas[:, :, i] = log_in_CV(Xboot, Yboot, nclus)
-    # average regression weight from all bootstrap runs
-    betas = np.nanmean(allbetas, axis=2)
-    return betas  # and spit them out again at the end
 
 
 def get_metrics(x, y, betas2use):
