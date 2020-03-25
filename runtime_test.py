@@ -5,31 +5,33 @@ from sklearn import datasets
 from sklearn.decomposition import PCA
 import numpy as np
 from looco_loop import looco_loop
+from multi_logr_bag import multi_logr_bagr
+from multi_logr_bag_utils import bag_log
 from utils import colorscatter
 import scipy
 
 iris = datasets.load_iris()
 X = iris.data  # we only take the first two features.
 Y = iris.target
-
-ss=np.linspace(0,len(Y)-1,len(Y))
+ss = np.linspace(0, len(Y) - 1, len(Y))
 np.random.shuffle(ss)
-X=X[ss.astype(int),:]
-Y=Y[ss.astype(int)]
+X = X[ss.astype(int), :]
+Y = Y[ss.astype(int)]
 
 (
-    looco_all_clus_labels,
-    looco_bic,
-    looco_sil,
-    looco_cal,
-    looco_auc,
-    looco_f1,
-    looco_betas,
-) = looco_loop(X, "full", 1)
+    auc,
+    f1,
+    betas2use,
+    overall_prediction_continuous,
+    overall_prediction_discrete,
+    auc_partial,
+    f1_partial,
+    betas,
+    groupclass,
+    correctclass,
+    problemrec,
+) = multi_logr_bagr(100, np.append(np.expand_dims(Y, axis=1), X, axis=1), 3, 3, 0)
 
-fig = plt.figure(figsize=[15, 5])
-colorscatter(X, Y, np.ones(shape=X.shape[0]),plt.subplot(1, 2, 1))
-all_assigs_mode=[scipy.stats.mode(looco_all_clus_labels[:,p])[0][0].astype(int)+1 for p in range(looco_all_clus_labels.shape[1])]
-print(all_assigs_mode)
-colorscatter(X, all_assigs_mode, np.ones(shape=X.shape[0]),plt.subplot(1, 2, 2))
-plt.show()
+print(auc)
+print()
+print(auc_partial)
