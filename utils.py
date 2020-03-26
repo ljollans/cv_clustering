@@ -116,11 +116,30 @@ def contingency_clustering_match(assignment1, assignment2):
     return contingency, assignment_match, manipulated_contingency
 
 
-def many_co_cluster_match(A):
+def many_co_cluster_match(A, n_groups):
     co_cluster_count = np.full([A.shape[0], A.shape[0]], 0)
     for a1 in range(A.shape[0]):
         for a2 in range(A.shape[0]):
             co_cluster_count[a1,a2]=len(np.where(A[a1,:]==A[a2,:])[0])
     co_cluster_count = co_cluster_count - np.identity(A.shape[0]) * co_cluster_count[0, 0]
 
-    return co_cluster_count
+    max_match = np.max(co_cluster_count)
+    findmax = np.where(co_cluster_count == max_match)
+    print('highest match frequency=', str(max_match), 'occurring for', str(len(findmax[0])), 'pairs.')
+
+    finalassignments = np.full([n_groups, A.shape[1]], np.nan)
+    maxmatches = np.full([len(findmax[0]), A.shape[1]], np.nan)
+    for n in range(len(findmax[0])):
+        a1 = findmax[0][n]
+        a2 = findmax[1][n]
+        matches = np.where(A[a1, :] == A[a2, :])[0]
+        maxmatches[n, matches] = A[a1, matches]
+
+    overlap = np.full([len(findmax[0]), len(findmax[0])], np.nan)
+    for n in range(len(findmax[0])):
+        for m in range(len(findmax[0])):
+            if n != m:
+                if len(np.where(maxmatches[m, :] - maxmatches[n, :] == 0)[0])>max_match-(max_match/10):
+                    overlap[n, m] = 1
+
+    return co_cluster_count, maxmatches, overlap
