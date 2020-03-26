@@ -76,25 +76,21 @@ def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
     return contingency
 
 
-def coclustering_match(assignment1, assignment2):
+def co_clustering_match(assignment1, assignment2):
     contingency=contingency_matrix(assignment1, assignment2)
     unique_assignment1=set(assignment1)
     unique_assignment2=set(assignment2)
 
-    best_match_1 = np.full([len(unique_assignment1)],np.nan)
-    best_match_2 = np.full([len(unique_assignment2)], np.nan)
+    assignment_match=np.full([len(unique_assignment1),len(unique_assignment2)],np.nan)
 
-    for values_in_assignment1 in range(len(unique_assignment1)):
-        matches_for_value = contingency[values_in_assignment1, :]
-        best_match_1[values_in_assignment1] = np.where(matches_for_value == np.max(matches_for_value))[0][0]
-        print(np.where(matches_for_value == np.max(matches_for_value)))
+    counter=0
+    while np.sum(contingency)>0:
+        remaining_highest_match=np.max(contingency)
+        loc_highest_match=np.where(contingency==remaining_highest_match)
+        assignment_match[loc_highest_match[0],loc_highest_match[1]]=counter
+        counter+=1
 
-    for values_in_assignment2 in range(len(unique_assignment2)):
-        matches_for_value = contingency[:,values_in_assignment2]
-        best_match_2[values_in_assignment2] = np.where(matches_for_value == np.max(matches_for_value))[0][0]
-        print(np.where(matches_for_value == np.max(matches_for_value)))
-
-    return contingency, best_match_1,best_match_2
+    return contingency, assignment_match
 
 
 
