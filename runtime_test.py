@@ -1,14 +1,15 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from utils import many_co_cluster_match
+import time
 
-from utils import co_clustering_match
+qq=np.zeros(shape=50)
+for i in range(1):
 
-assignment1=np.random.randint(0,3,10)
-assignment2=np.random.randint(0,3,10)
+    A=np.zeros(shape=[200,50])
+    for n in range(50):
+        A[:,n]=np.random.randint(0,6,200)
 
-contingency, best_match_1, best_match_2=co_clustering_match(assignment1,assignment2)
-
-print(assignment1)
-print(assignment2)
-print(contingency)
-print(best_match_1)
-print(best_match_2)
+    seconds = time.time()
+    co_cluster_count = many_co_cluster_match(A)
+    print("Seconds since epoch =", time.time()-seconds)
