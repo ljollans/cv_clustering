@@ -5,19 +5,18 @@ import numpy as np
 import pickle
 
 def loocv_assigmatcher(all_cluslabels):
-    #allcluslabels should be an NxN matrix
     if all_cluslabels.shape[1]!=all_cluslabels.shape[0]:
         sys.exit('all_cluslabels should be an NxN np-array')
     N=all_cluslabels.shape[0]
     met=np.full([N,N],np.nan)
-    for ppt1 in range(N): # loop over all LOOCV subject cluster assignments 
-        for ppt2 in range(N): # get a different assignment to compare
+    for ppt1 in range(N):
+        for ppt2 in range(N):
             if ppt1!=ppt2:
                 a1=all_cluslabels[ppt1,:]; a2=all_cluslabels[ppt2,:]
                 a2=np.delete(a2,np.where(np.isnan(a1))[0]); a1=np.delete(a1,np.where(np.isnan(a1))[0]); 
                 a1=np.delete(a1,np.where(np.isnan(a2))[0]); a2=np.delete(a2,np.where(np.isnan(a2))[0]); 
-                if len(a1)>1: # arbitrary minimum threshold
-                    C=contingency_matrix(a1,a2) # contingency matrix for comparing the two assignments
+                if len(a1)>1:
+                    C=contingency_matrix(a1,a2)
                     correcta=np.full([C.shape[0]],np.nan); incorrecta=np.full([C.shape[0]],np.nan)
                     for c in range(C.shape[0]):
                         mmax=np.max(C[c,:])
@@ -28,7 +27,6 @@ def loocv_assigmatcher(all_cluslabels):
     
     return met
 
-# assume we have the matched idx
 def getsubfoldbetas(savedir,s,ctr, nclus,null):
     sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
     

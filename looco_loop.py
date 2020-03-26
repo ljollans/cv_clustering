@@ -1,5 +1,4 @@
 import numpy as np
-import clusmets
 from clusmets import calculate_clustering_metrics
 
 
