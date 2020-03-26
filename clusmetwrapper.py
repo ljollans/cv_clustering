@@ -3,7 +3,7 @@
 import numpy as np
 import os
 
-from looco_loop import looco_loop
+from looco_loop import loocv_loop
 
 def clusmetwrapper(design):
 
@@ -36,7 +36,7 @@ def clusmetwrapper(design):
             auc[train_index_sub, nclus],
             f1[train_index_sub, nclus],
             betas[train_index_sub, nclus, :nclus+2, :]
-        ) = looco_loop(x2, design["covariance"], nclus)
+        ) = loocv_loop(x2, design["covariance"], nclus)
         for t in range(len(train_index_sub)):
             all_clus_labels[train_index_sub[t],nclus,train_index_sub]=tmp_all_clus_labels[t,:]
 

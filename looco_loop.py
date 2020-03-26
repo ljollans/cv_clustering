@@ -3,38 +3,38 @@ import clusmets
 from clusmets import calculate_clustering_metrics
 
 
-def looco_loop(x_all, covariance, k):
+def loocv_loop(x_all, covariance, k):
 
     n_samples = x_all.shape[0]
     n_features = x_all.shape[1]
 
-    looco_all_clus_labels = np.full([n_samples, n_samples], np.nan)
-    looco_bic = np.full([n_samples], np.nan)
-    looco_sil = np.full([n_samples], np.nan)
-    looco_cal = np.full([n_samples], np.nan)
-    looco_auc = np.full([n_samples], np.nan)
-    looco_f1 = np.full([n_samples], np.nan)
-    looco_betas = np.full([n_samples, k + 2, n_features], np.nan)
+    loocv_all_clus_labels = np.full([n_samples, n_samples], np.nan)
+    loocv_bic = np.full([n_samples], np.nan)
+    loocv_sil = np.full([n_samples], np.nan)
+    loocv_cal = np.full([n_samples], np.nan)
+    loocv_auc = np.full([n_samples], np.nan)
+    loocv_f1 = np.full([n_samples], np.nan)
+    loocv_betas = np.full([n_samples, k + 2, n_features], np.nan)
 
-    for looco in range(n_samples):
-        x = np.delete(x_all, looco, axis=0)
-        save_vector = np.delete(np.arange(n_samples),looco)
+    for loocv in range(n_samples):
+        x = np.delete(x_all, loocv, axis=0)
+        save_vector = np.delete(np.arange(n_samples),loocv)
         [
-            looco_all_clus_labels[looco, save_vector],
-            looco_bic[looco],
-            looco_sil[looco],
-            looco_cal[looco],
-            looco_auc[looco],
-            looco_f1[looco],
-            looco_betas[looco, :, :],
+            loocv_all_clus_labels[loocv, save_vector],
+            loocv_bic[loocv],
+            loocv_sil[loocv],
+            loocv_cal[loocv],
+            loocv_auc[loocv],
+            loocv_f1[loocv],
+            loocv_betas[loocv, :, :],
         ] = calculate_clustering_metrics({'data':x, 'nclus':k, 'covariance':covariance})
 
     return (
-        looco_all_clus_labels,
-        looco_bic,
-        looco_sil,
-        looco_cal,
-        looco_auc,
-        looco_f1,
-        looco_betas,
+        loocv_all_clus_labels,
+        loocv_bic,
+        loocv_sil,
+        loocv_cal,
+        loocv_auc,
+        loocv_f1,
+        loocv_betas,
     )

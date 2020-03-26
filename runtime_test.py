@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn import datasets
 from sklearn.decomposition import PCA
 import numpy as np
-from looco_loop import looco_loop
+from looco_loop import loocv_loop
 from multi_logr_bag import multi_logr_bagr
 from multi_logr_bag_utils import bag_log
 from utils import colorscatter
