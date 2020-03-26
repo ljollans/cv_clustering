@@ -139,7 +139,9 @@ def many_co_cluster_match(A, n_groups):
     for n in range(len(findmax[0])):
         for m in range(len(findmax[0])):
             if n != m:
-                if len(np.where(maxmatches[m, :] - maxmatches[n, :] == 0)[0])>max_match-(max_match/10):
+                if len(np.where(maxmatches[m, :] - maxmatches[n, :] == 0)[0]) > np.floor(max_match-(max_match/10)):
                     overlap[n, m] = 1
 
-    return co_cluster_count, maxmatches, overlap
+
+
+    return co_cluster_count, overlap
