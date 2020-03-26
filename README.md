@@ -1,4 +1,4 @@
-Cross-validated clustering pipeline
+Cross-validated clustering pipeline - step 1: clustering
 =======================================
 
 Files
@@ -13,6 +13,26 @@ Files
 Input data
 ----------
 
+User input to clusmetwrapper.py:
+* design['X']: The data
+* design['n_ks']: The range for number of clusters to test (i.e. '8' would result in between 2 and 10 clusters being tested)
+* design['cv_assignment']: The cross-validation fold assignment in the shape of a [N x n_cv_folds] matrix, where each column represents a cross-validation fold. In each column numbers from 0 to n_cv_folds indicate the nested CV fold within the outer training set with NaN indicating the outer test set.
+* design['mainfold']: The outer cross-validation fold to use for the analysis iteration
+* design['subfold']: The nested cross-validation fold to use for the analysis iteration
+* design['covariance']: The covariance type to use for GMM (e.g. full or spherical)
 
-Output (saved files)
+Output 
 -------------------
+
+Output from clusmetwrapper.py:
+* all_clus_labels ([N x n_ks x N1] matrix): cluster assignments for all observations (N1) by LOOCV iteration and number of clusters
+* bic ([N * n_ks] matrix): BIC values for each LOOCV iteration and number of clusters
+* sil ([N * n_ks] matrix): silhouette scores for each LOOCV iteration and number of clusters
+* cal ([N * n_ks] matrix): calinski-harabasz scores for each LOOCV iteration and number of clusters
+* auc ([N * n_ks] matrix): AUC values for each LOOCV iteration and number of clusters
+* f1 ([N * n_ks] matrix): F1 scores for each LOOCV iteration and number of clusters
+* betas ([N * n_ks * n_ks1 * n_features] matrix): BETA weights for each cluster (n_ks1) by LOOCV iteration and number of clusters
+
+Files saved by cluster_wrapper_0.py:
+* ["BIC", "SIL", "CAL", "all_clus_labels", "AUC", "F1", "BETAS"]
+* saved under the specified save directory and with the save string prefix with the used dataset and nested cv fold (e.g. a number form 0-15 for 4x4 cross-validation)
