@@ -4,6 +4,7 @@ from utils import many_co_cluster_match, contingency_matrix
 import time
 import pickle
 import csv
+import pandas as pd
 from sklearn.cluster import KMeans
 
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
@@ -18,17 +19,24 @@ with open(pkl_filename, "rb") as file:
     A = pickle.load(file)
 A = np.squeeze(A[:, n_groups - 2, :])
 
-assignments_to_use=np.where(cv_assignment[:,0]>0)[0]
-A=A[assignments_to_use,:]
-A=A[:,assignments_to_use]
+filename='/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/sample_descriptors.csv'
+sample_descriptors = pd.read_csv(filename)
+sample_descriptors.describe()
 
-#ss=np.linspace(0,len(assignments_to_use)-1,len(assignments_to_use))
-#np.random.shuffle(ss)
-#A=A[ss.astype(int),:]
+scanstudy=sample_descriptors['scanstudy'].to_numpy()
 
-co_cluster_count, overlap = many_co_cluster_match(A, n_groups)
+#assignments_to_use=np.where(cv_assignment[:,0]>0)[0]
+co_cluster_count, overlap = many_co_cluster_match(A, n_groups)#
 
 fig=plt.figure()
-plt.subplot(1,2,1); plt.imshow(A);
-plt.subplot(1,2,2); plt.imshow(co_cluster_count);
+plt.subplot(3,3,1); plt.imshow(A); plt.colorbar()
+plt.subplot(3,3,2); plt.imshow(co_cluster_count); plt.colorbar()
+for i in range(3):
+    xx=co_cluster_count[np.where(scanstudy==i+1)[0],:]
+    xx=xx[:,np.where(scanstudy==i+1)[0]]
+    plt.subplot(3,3,4+i); plt.imshow(xx); plt.colorbar()
+for i in range(3):
+    xx=co_cluster_count[np.where(scanstudy==i+1)[0],:]
+    xx=xx[:,np.where(scanstudy!=i+1)[0]]
+    plt.subplot(3,3,7+i); plt.imshow(xx); plt.colorbar()
 plt.show()
