@@ -11,11 +11,11 @@ with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
 
 n_groups = 6
 
-pkl_filename = "/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_Svcs_svc_sallcluslabels_fold0.pkl"
+pkl_filename = "/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_Svcs_svc_sallcluslabels_fold10.pkl"
 with open(pkl_filename, "rb") as file:
     A = pickle.load(file)
 A = np.squeeze(A[:, n_groups - 2, :])
 
-co_cluster_count,  maxmatches, equal_check = many_co_cluster_match(A, n_groups)
+co_cluster_count,  maxmatches, equal_check = many_co_cluster_match(A, n_groups, 0.5)
 
 print(equal_check)
