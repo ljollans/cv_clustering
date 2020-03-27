@@ -117,10 +117,10 @@ def contingency_clustering_match(assignment1, assignment2):
 
 
 def many_co_cluster_match(A, n_groups):
-    co_cluster_count = np.full([A.shape[0], A.shape[0]], 0)
-    for a1 in range(A.shape[0]):
-        for a2 in range(A.shape[0]):
-            co_cluster_count[a1,a2]=len(np.where(A[a1,:]==A[a2,:])[0])
+    co_cluster_count = np.full([A.shape[1], A.shape[1]], 0)
+    for a1 in range(A.shape[1]):
+        for a2 in range(A.shape[1]):
+            co_cluster_count[a1,a2]=len(np.where(A[:,a1]==A[:,a2])[0])
     co_cluster_count = co_cluster_count - np.identity(A.shape[0]) * co_cluster_count[0, 0]
 
     max_match = np.max(co_cluster_count)
