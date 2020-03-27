@@ -127,7 +127,7 @@ def many_co_cluster_match(A, n_groups):
     findmax = np.where(co_cluster_count == max_match)
     print('highest match frequency=', str(max_match), 'occurring for', str(len(findmax[0])), 'pairs.')
 
-    finalassignments = np.full([n_groups, A.shape[1]], np.nan)
+    finalassignments = np.full([A.shape[1],n_groups], np.nan)
     maxmatches = np.full([A.shape[1],len(findmax[0]),], np.nan)
     for n in range(len(findmax[0])):
         a1 = findmax[0][n]
@@ -138,8 +138,24 @@ def many_co_cluster_match(A, n_groups):
     #for p in range(A.shape[1]):
     #    unique_values_eachp[p]=len(np.unique(maxmatches[p,:]))-len(np.where(np.isnan(maxmatches[p,:]))[0])
     equal_check=np.zeros(shape=[len(findmax[0]),len(findmax[0])])
+    isfold=np.full(len(findmax[0]),np.nan)
+    clus_ctr=-1
     for n in range(len(findmax[0])):
-        equal_check[n,:]=[len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0]) for m in range(len(findmax[0]))]
+        for m in range(len(findmax[0])):
+            if m<n:
+                equal_check[n,m]=len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0])
+        if len(np.where(equal_check[n,:]>A.shape[1]*0.9)[0])==0:
+            clus_ctr+=1
+            finalassignments[:,clus_ctr]=maxmatches[:,n]
+            isfold[n]=clus_ctr
+        else:
+            wherematch=np.where(equal_check[n,:]>A.shape[1]*0.9)
+            find_supplement=np.where((np.isnan(maxmatches[:,wherematch])) & (np.isfinite(maxmatches[:,n])))
+            finalassignments[find_supplement,isfold[wherematch]]=maxmatches[find_supplement,n]
+            isfold[n]=isfold[wherematch]
+
+
+
     #max_unique=np.max(unique_values_eachp)
     #find_max_unique=np.where(unique_values_eachp==max_unique)[0]
 
