@@ -128,20 +128,28 @@ def many_co_cluster_match(A, n_groups):
     print('highest match frequency=', str(max_match), 'occurring for', str(len(findmax[0])), 'pairs.')
 
     finalassignments = np.full([n_groups, A.shape[1]], np.nan)
-    maxmatches = np.full([len(findmax[0]), A.shape[1]], np.nan)
+    maxmatches = np.full([A.shape[1],len(findmax[0]),], np.nan)
     for n in range(len(findmax[0])):
         a1 = findmax[0][n]
         a2 = findmax[1][n]
-        matches = np.where(A[a1, :] == A[a2, :])[0]
-        maxmatches[n, matches] = A[a1, matches]
-
-    overlap = np.full([len(findmax[0]), len(findmax[0])], np.nan)
+        matches = np.where(A[:,a1] == A[:,a2])[0]
+        maxmatches[matches,n] = A[matches,a1]
+    #unique_values_eachp=np.zeros(A.shape[1])
+    #for p in range(A.shape[1]):
+    #    unique_values_eachp[p]=len(np.unique(maxmatches[p,:]))-len(np.where(np.isnan(maxmatches[p,:]))[0])
+    equal_check=np.zeros(shape=[len(findmax[0]),len(findmax[0])])
     for n in range(len(findmax[0])):
-        for m in range(len(findmax[0])):
-            if n != m:
-                if len(np.where(maxmatches[m, :] - maxmatches[n, :] == 0)[0]) > np.floor(max_match-(max_match/10)):
-                    overlap[n, m] = 1
+        equal_check[n,:]=[len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0]) for m in range(len(findmax[0]))]
+    #max_unique=np.max(unique_values_eachp)
+    #find_max_unique=np.where(unique_values_eachp==max_unique)[0]
+
+    #overlap = np.full([len(findmax[0]), len(findmax[0])], np.nan)
+    #for n in range(len(findmax[0])):
+    #    for m in range(len(findmax[0])):
+    #        if n != m:
+    #            if len(np.where(maxmatches[m, :] - maxmatches[n, :] == 0)[0]) > np.floor(max_match-(max_match/10)):
+    #                overlap[n, m] = 1
 
 
 
-    return co_cluster_count, overlap
+    return co_cluster_count,  maxmatches, equal_check
