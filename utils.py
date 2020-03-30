@@ -116,53 +116,35 @@ def contingency_clustering_match(assignment1, assignment2):
     return contingency, assignment_match, manipulated_contingency
 
 
-def many_co_cluster_match(A, n_groups, ratio_to_match_for_aggregation):
+def get_co_cluster_count(A):
     co_cluster_count = np.full([A.shape[1], A.shape[1]], 0)
     for a1 in range(A.shape[1]):
         for a2 in range(A.shape[1]):
-            co_cluster_count[a1,a2]=len(np.where(A[:,a1]==A[:,a2])[0])
+            if a1>a2:
+                co_cluster_count[a1,a2]=len(np.where(A[:,a1]==A[:,a2])[0])
+    np.fill_diagonal(co_cluster_count , 0 )
+    return co_cluster_count
 
-    max_match = np.max(co_cluster_count)*.8
-    co_cluster_count = co_cluster_count - np.identity(A.shape[0]) * np.max(co_cluster_count)
-
+def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
+    max_match = np.max(co_cluster_count)*ratio_of_max_as_lower
     findmax = np.where(co_cluster_count >= max_match)
     print('highest match frequency=', str(max_match), 'occurring for', str(len(findmax[0])), 'pairs.')
-
-    finalassignments = np.full([A.shape[1], n_groups], np.nan)
     maxmatches = np.full([A.shape[1], len(findmax[0]), ], np.nan)
     for n in range(len(findmax[0])):
         a1 = findmax[0][n]
         a2 = findmax[1][n]
         matches = np.where(A[:, a1] == A[:, a2])[0]
         maxmatches[matches, n] = A[matches, a1]
+    return maxmatches, findmax
 
-    #if len(findmax[0])<n_groups:
-
-    equal_check=np.zeros(shape=[len(findmax[0]),len(findmax[0])])
-    isfold=np.full(len(findmax[0]),np.nan)
-    clus_ctr=-1
-    for n in range(len(findmax[0])):
-        for m in range(len(findmax[0])):
-            if m<n:
-                equal_check[n,m]=len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0])
-        if len(np.where(equal_check[n,:]>max_match*ratio_to_match_for_aggregation)[0])==0:
-            clus_ctr+=1
-            print('assigning a sequence to cluster',clus_ctr)
-            finalassignments[:,clus_ctr]=maxmatches[:,n]
-            isfold[n]=clus_ctr
-        else:
-            wherematch=np.where(equal_check[n,:]>max_match*ratio_to_match_for_aggregation)[0][0]
-            #print('subject assignment',n,'and assignment',wherematch,'are overlapping in',equal_check[n,wherematch],'instances')
-            find_supplement=np.where(np.isnan(finalassignments[:,isfold[wherematch].astype(int)]))[0]
-            find_supplement=np.delete(find_supplement,np.where(np.isnan(maxmatches[find_supplement,n]))[0],axis=0)
-            if len(find_supplement)>0:
-                #print('supplementing',len(find_supplement),'values')
-                finalassignments[find_supplement,isfold[wherematch].astype(int)]=maxmatches[find_supplement,n]
-            isfold[n]=isfold[wherematch]
-
-    #else:
-    #    print('sorry, lots of high matches, i do not know what to do.')
-    #    plt.imshow(co_cluster_count); plt.colorbar(); plt.show()
+def check_equality(maxmatches):
+    identical_values=np.full([maxmatches.shape[1],maxmatches.shape[1]],np.nan)
+    for n in range(maxmatches.shape[1]):
+        for m in range ( maxmatches.shape[ 1 ] ):
+            identical_values[n,m]=(len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0]))
+            identical_values[n,m]=(identical_values[n,m]*100)/(maxmatches.shape[0]-len(np.where(np.isnan(maxmatches[:,n]))[0]))
+    overlap = np.where ( identical_values > 75 )
+    non_overlap = np.where ( identical_values < 25 )
+    return identical_values, overlap, non_overlap
 
 
-    return co_cluster_count,  maxmatches, equal_check
