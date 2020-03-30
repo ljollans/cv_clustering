@@ -15,7 +15,7 @@ def identify_set_and_fold(current_proc, n_cv_folds):
 
 def colorscatter(X_e, Y, d, ax):
     try:
-        groups = (set(Y[~np.isnan(Y)]))
+        groups = set(Y[~np.isnan(Y)])
     except:
         groups = np.unique(Y)
     colors = matplotlib.cm.tab10(np.linspace(0, 1, 10))
@@ -64,10 +64,11 @@ def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
     # Using coo_matrix to accelerate simple histogram calculation,
     # i.e. bins are consecutive integers
     # Currently, coo_matrix is faster than histogram2d for simple cases
-    contingency = sp.coo_matrix((np.ones(class_idx.shape[0]),
-                                 (class_idx, cluster_idx)),
-                                shape=(n_classes, n_clusters),
-                                dtype=np.int)
+    contingency = sp.coo_matrix(
+        (np.ones(class_idx.shape[0]), (class_idx, cluster_idx)),
+        shape=(n_classes, n_clusters),
+        dtype=np.int,
+    )
     if sparse:
         contingency = contingency.tocsr()
         contingency.sum_duplicates()
@@ -97,7 +98,11 @@ def contingency_clustering_match(assignment1, assignment2):
         else:
             unique_loc0 = np.unique(loc_highest_match[0])
             unique_loc1 = np.unique(loc_highest_match[1])
-            if len(unique_loc0) == len(loc_highest_match[0]) & len(unique_loc1) == len(loc_highest_match[1]):
+            if (
+                len(unique_loc0)
+                == len(loc_highest_match[0]) & len(unique_loc1)
+                == len(loc_highest_match[1])
+            ):
                 assignment_match[loc_highest_match[0][0]] = loc_highest_match[1][0]
                 manipulated_contingency[loc_highest_match[0][0], :] = 0
                 manipulated_contingency[:, loc_highest_match[1][0]] = 0
@@ -120,16 +125,23 @@ def get_co_cluster_count(A):
     co_cluster_count = np.full([A.shape[1], A.shape[1]], 0)
     for a1 in range(A.shape[1]):
         for a2 in range(A.shape[1]):
-            if a1>a2:
-                co_cluster_count[a1,a2]=len(np.where(A[:,a1]==A[:,a2])[0])
-    np.fill_diagonal(co_cluster_count , 0 )
+            if a1 > a2:
+                co_cluster_count[a1, a2] = len(np.where(A[:, a1] == A[:, a2])[0])
+    np.fill_diagonal(co_cluster_count, 0)
     return co_cluster_count
 
+
 def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
-    max_match = np.max(co_cluster_count)*ratio_of_max_as_lower
+    max_match = np.max(co_cluster_count) * ratio_of_max_as_lower
     findmax = np.where(co_cluster_count >= max_match)
-    print('highest match frequency=', str(max_match), 'occurring for', str(len(findmax[0])), 'pairs.')
-    maxmatches = np.full([A.shape[1], len(findmax[0]), ], np.nan)
+    print(
+        "highest match frequency=",
+        str(max_match),
+        "occurring for",
+        str(len(findmax[0])),
+        "pairs.",
+    )
+    maxmatches = np.full([A.shape[1], len(findmax[0]),], np.nan)
     for n in range(len(findmax[0])):
         a1 = findmax[0][n]
         a2 = findmax[1][n]
@@ -137,14 +149,26 @@ def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
         maxmatches[matches, n] = A[matches, a1]
     return maxmatches, findmax
 
+
+def percent_overlap_vectors(a1, a2):
+
+    return ((len(np.where(a2 - a1 == 0)[0])) * 100) / (
+        a1.shape[0] - len(np.where(np.isnan(a1))[0])
+    )
+
+
+
+
 def check_equality(maxmatches):
-    identical_values=np.full([maxmatches.shape[1],maxmatches.shape[1]],np.nan)
+    identical_values = np.full([maxmatches.shape[1], maxmatches.shape[1]], np.nan)
     for n in range(maxmatches.shape[1]):
-        for m in range ( maxmatches.shape[ 1 ] ):
-            identical_values[n,m]=(len(np.where(maxmatches[:,m]-maxmatches[:,n]==0)[0]))
-            identical_values[n,m]=(identical_values[n,m]*100)/(maxmatches.shape[0]-len(np.where(np.isnan(maxmatches[:,n]))[0]))
-    overlap = np.where ( identical_values > 75 )
-    non_overlap = np.where ( identical_values < 25 )
+        for m in range(maxmatches.shape[1]):
+            identical_values[n, m] = len(
+                np.where(maxmatches[:, m] - maxmatches[:, n] == 0)[0]
+            )
+            identical_values[n, m] = (identical_values[n, m] * 100) / (
+                maxmatches.shape[0] - len(np.where(np.isnan(maxmatches[:, n]))[0])
+            )
+    overlap = np.where(identical_values > 75)
+    non_overlap = np.where(identical_values < 25)
     return identical_values, overlap, non_overlap
-
-
