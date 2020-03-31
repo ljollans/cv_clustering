@@ -30,7 +30,7 @@ fig=plt.figure()
 ctr=0
 for subfold in range(4):
 
-    pkl_filename = ('/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_TSvc_tsvcallcluslabels_fold' + str(subfold) + '.pkl')
+    pkl_filename = ('/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_Svcs_sallcluslabels_fold' + str(subfold) + '.pkl')
     with open(pkl_filename, "rb") as file:
         Aorig = pickle.load(file)
 
@@ -38,8 +38,13 @@ for subfold in range(4):
     trainset=select_trainset(cv_assignment,mainfold,subfold)
     A1=Aorig[trainset,:,:]
     A2=A1[:,:,trainset]
-    plt.subplot(2,2,subfold+1)
-    cr=n_clus_retrieval_chk(A2)
+    cr, pac = n_clus_retrieval_chk ( A2 )
+
+    ctr+=1
+    plt.subplot(4,2,ctr)
     plt.plot(cr)
+    ctr += 1
+    plt.subplot ( 4, 2, ctr)
+    plt.plot(pac)
 plt.show()
 

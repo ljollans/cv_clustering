@@ -163,7 +163,7 @@ def get_pac(con_mat):
     x1 = 0.1
     x2 = 0.9
 
-    p = con_mat[np.tril_indices(con_mat.shape[0])].flatten()
+    p = con_mat.flatten()
 
     xs, ys = ecdf(p)
     select_vals = np.where(np.logical_and(xs >= x1, xs <= x2))
@@ -178,9 +178,15 @@ def get_pac(con_mat):
 
 def n_clus_retrieval_chk(A):
     n_maxcluster=np.zeros(shape=[A.shape[1]])
+    pacs = np.zeros ( shape=[ A.shape[ 1 ] ] )
     for ngroups in range(A.shape[1]):
         A2=A[:,ngroups,:]
         co_cluster_count = get_co_cluster_count ( A2 )
+        try:
+            pacs[ngroups]=get_pac(co_cluster_count)
+        except:
+            pacs[ngroups]=0.0
+
         maxmatches, findmax = get_maxmatches ( A2, co_cluster_count, 1 - 0.2 )
 
         final_assignment = [ ]
@@ -196,7 +202,7 @@ def n_clus_retrieval_chk(A):
             else:
                 final_assignment.append ( maxmatches[ :, n ] )
         n_maxcluster[ngroups] = (len ( final_assignment ))
-    return n_maxcluster
+    return n_maxcluster, pacs
 
 def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
     max_match = np.max(co_cluster_count) * ratio_of_max_as_lower
