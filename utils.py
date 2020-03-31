@@ -13,18 +13,18 @@ def identify_set_and_fold(current_proc, n_cv_folds):
     return current_set, current_fold
 
 
-def select_trainset(cv_assignment,mainfold,subfold):
+def select_trainset(cv_assignment, mainfold, subfold):
     return np.where(
-    (cv_assignment[:, mainfold] != subfold)
-    & (~np.isnan(cv_assignment[:, mainfold]))
-)[0]
+        (cv_assignment[:, mainfold] != subfold)
+        & (~np.isnan(cv_assignment[:, mainfold]))
+    )[0]
 
 
-def select_testset(X,cv_assignment,mainfold,subfold):
+def select_testset(X, cv_assignment, mainfold, subfold):
     return np.where(
-    (cv_assignment[:, mainfold] == subfold)
-    & (~np.isnan(cv_assignment[:, mainfold]))
-)[0]
+        (cv_assignment[:, mainfold] == subfold)
+        & (~np.isnan(cv_assignment[:, mainfold]))
+    )[0]
 
 
 def colorscatter(X_e, Y, d, ax):
@@ -136,14 +136,22 @@ def contingency_clustering_match(assignment1, assignment2):
 
 
 def get_co_cluster_count(A):
-    co_cluster_count = np.full([A.shape[1], A.shape[1]], np.nan)
+    co_cluster_count = np.full([A.shape[1], A.shape[1]], 0.00)
     for a1 in range(A.shape[1]):
         for a2 in range(A.shape[1]):
             if a1 > a2:
                 m = len(np.where(A[:, a1] == A[:, a2])[0])
-                i = A.shape[1]-len(np.unique(np.append(np.where(np.isnan(A[:,a1]))[0], np.where(np.isnan(A[:,a2]))[0])))
-                co_cluster_count[ a1, a2 ]=m/i
+                i = A.shape[1] - len(
+                    np.unique(
+                        np.append(
+                            np.where(np.isnan(A[:, a1]))[0],
+                            np.where(np.isnan(A[:, a2]))[0],
+                        )
+                    )
+                )
+                co_cluster_count[a1, a2] = m / i
     return co_cluster_count
+
 
 def ecdf(x):
     xs = np.sort(x)
@@ -166,6 +174,29 @@ def get_pac(con_mat):
     pac = x2_val - x1_val
 
     return pac
+
+
+def n_clus_retrieval_chk(A):
+    n_maxcluster=np.zeros(shape=[A.shape[1]])
+    for ngroups in range(A.shape[1]):
+        A2=A[:,ngroups,:]
+        co_cluster_count = get_co_cluster_count ( A2 )
+        maxmatches, findmax = get_maxmatches ( A2, co_cluster_count, 1 - 0.2 )
+
+        final_assignment = [ ]
+        for n in range ( maxmatches.shape[ 1 ] ):
+            if len ( final_assignment ) > 0:
+                tmp_match_pct = np.zeros ( len ( final_assignment ) )
+                for clus in range ( len ( final_assignment ) ):
+                    tmp_match_pct[ clus ] = percent_overlap_vectors (
+                        maxmatches[ :, n ], final_assignment[ clus ]
+                    )
+                if np.max ( tmp_match_pct ) < 25:
+                    final_assignment.append ( maxmatches[ :, n ] )
+            else:
+                final_assignment.append ( maxmatches[ :, n ] )
+        n_maxcluster[ngroups] = (len ( final_assignment ))
+    return n_maxcluster
 
 def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
     max_match = np.max(co_cluster_count) * ratio_of_max_as_lower
@@ -191,8 +222,6 @@ def percent_overlap_vectors(a1, a2):
     return ((len(np.where(a2 - a1 == 0)[0])) * 100) / (
         a1.shape[0] - len(np.where(np.isnan(a1))[0])
     )
-
-
 
 
 def check_equality(maxmatches):
