@@ -13,6 +13,20 @@ def identify_set_and_fold(current_proc, n_cv_folds):
     return current_set, current_fold
 
 
+def select_trainset(cv_assignment,mainfold,subfold):
+    return np.where(
+    (cv_assignment[:, mainfold] != subfold)
+    & (~np.isnan(cv_assignment[:, mainfold]))
+)[0]
+
+
+def select_testset(X,cv_assignment,mainfold,subfold):
+    return np.where(
+    (cv_assignment[:, mainfold] == subfold)
+    & (~np.isnan(cv_assignment[:, mainfold]))
+)[0]
+
+
 def colorscatter(X_e, Y, d, ax):
     try:
         groups = set(Y[~np.isnan(Y)])
