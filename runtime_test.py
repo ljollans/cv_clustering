@@ -39,27 +39,6 @@ A1=A[trainset,:]
 A2=A1[:,trainset]
 
 
-
+#plt.imshow(A2); plt.colorbar(); plt.show()
 co_cluster_count = get_co_cluster_count(A2)
-co_cluster_count=(co_cluster_count)/(A2.shape[1]-2)
-con_mat=co_cluster_count
-
-x1 = 0.1
-x2 = 0.9
-p = con_mat[np.tril_indices(con_mat.shape[0])]  .flatten()
-
-xs,ys = ecdf ( p )
-select_vals=np.where(np.logical_and(xs>=x1, xs<=x2))
-x1_x2_range = ys[select_vals[0]]
-x1_val = x1_x2_range[ 0 ]
-x2_val = x1_x2_range[ -1 ]
-PAC1 = x2_val - x1_val
-print(PAC1)
-
-pac_temp = ecdf ( p )
-pac_temp = pd.DataFrame ( {'index': pac_temp[ 0 ], 'cdf': pac_temp[ 1 ]} )
-pac_temp = pac_temp[ pac_temp[ 'index' ].isin ( [ x1, x2 ] ) ]
-x1_val = pac_temp[ 'cdf' ].iloc[ 0 ]
-x2_val = pac_temp[ 'cdf' ].iloc[ -1 ]
-PAC2 = x2_val - x1_val
-print(PAC2)
+plt.imshow(co_cluster_count); plt.colorbar(); plt.show()

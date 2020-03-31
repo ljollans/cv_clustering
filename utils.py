@@ -136,12 +136,13 @@ def contingency_clustering_match(assignment1, assignment2):
 
 
 def get_co_cluster_count(A):
-    co_cluster_count = np.full([A.shape[1], A.shape[1]], 0)
+    co_cluster_count = np.full([A.shape[1], A.shape[1]], np.nan)
     for a1 in range(A.shape[1]):
         for a2 in range(A.shape[1]):
             if a1 > a2:
-                co_cluster_count[a1, a2] = len(np.where(A[:, a1] == A[:, a2])[0])
-    np.fill_diagonal(co_cluster_count, 0)
+                m = len(np.where(A[:, a1] == A[:, a2])[0])
+                i = A.shape[1]-len(np.unique(np.append(np.where(np.isnan(A[:,a1]))[0], np.where(np.isnan(A[:,a2]))[0])))
+                co_cluster_count[ a1, a2 ]=m/i
     return co_cluster_count
 
 def ecdf(x):
