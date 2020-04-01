@@ -12,29 +12,6 @@ from scipy import sparse as sp
 from utils import select_trainset, percent_overlap_vectors, get_pac
 
 
-def loocv_assigmatcher(all_cluslabels):
-    if all_cluslabels.shape[1]!=all_cluslabels.shape[0]:
-        sys.exit('all_cluslabels should be an NxN np-array')
-    N=all_cluslabels.shape[0]
-    met=np.full([N,N],np.nan)
-    for ppt1 in range(N):
-        for ppt2 in range(N):
-            if ppt1!=ppt2:
-                a1=all_cluslabels[ppt1,:]; a2=all_cluslabels[ppt2,:]
-                a2=np.delete(a2,np.where(np.isnan(a1))[0]); a1=np.delete(a1,np.where(np.isnan(a1))[0]);
-                a1=np.delete(a1,np.where(np.isnan(a2))[0]); a2=np.delete(a2,np.where(np.isnan(a2))[0]);
-                if len(a1)>1:
-                    C=contingency_matrix(a1,a2)
-                    correcta=np.full([C.shape[0]],np.nan); incorrecta=np.full([C.shape[0]],np.nan)
-                    for c in range(C.shape[0]):
-                        mmax=np.max(C[c,:])
-                        msum=np.sum(C[c,:])
-                        correcta[c]=mmax
-                        incorrecta[c]=msum-mmax
-                    met[ppt1,ppt2]=(np.sum(incorrecta)*100)/len(a2)
-
-    return met
-
 def getsubfoldbetas(savedir,s,ctr, nclus,null):
     sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
 
@@ -452,3 +429,54 @@ def match_assignments_to_final_assignments(cluster_assignments, final_assignment
                 cluster_assignments[:,n], final_assignment[clus]
             )
     return match_pct
+
+
+def get_aggregated_patterns(final_assignment,meet_fit_requirements,match_pct, A):
+    n_groups = (len(final_assignment))
+    aggregated_patterns_lists = []
+    aggregated_patterns_arrays = []
+    for p in range(n_groups):
+        aggregated_patterns_lists.append([])
+        aggregated_patterns_arrays.append([])
+
+    for ppt in meet_fit_requirements:
+        ppt_fit = np.where(match_pct[ppt, :] == np.max(match_pct[ppt, :]))[0]
+        aggregated_patterns_lists[ppt_fit[0]].append(A[:, ppt])
+
+    patterns_per_group = [len(aggregated_patterns_lists[i]) for i in range(n_groups)]
+    n_iterations = A.shape[0]
+    # restructure
+    for g in range(n_groups):
+        aggregated_patterns_arrays[g]=np.full([n_iterations,patterns_per_group[g]],np.nan)
+        for p in range(patterns_per_group[g]):
+            aggregated_patterns_arrays[g][:,p]=aggregated_patterns_lists[g][p]
+
+    return aggregated_patterns_arrays
+
+
+def recode_iteration_assignments(aggregated_patterns_arrays,k):
+    n_groups=len(aggregated_patterns_arrays)
+    patterns_per_group=[len(aggregated_patterns_arrays[i]) for i in range(n_groups)]
+    n_iterations=aggregated_patterns_arrays[0].shape[0]
+    corresponding_cluster=np.full([n_iterations,n_groups],np.nan)
+    for i in range(n_iterations):
+        tmp_match=np.full([n_groups,k],0.00)
+        for g in range(n_groups):
+            crit=aggregated_patterns_arrays[g][i,:]
+            u_crit=np.unique(crit)
+            for n in range(len(u_crit)):
+                c=(len(np.where(crit==u_crit[n])[0])/len(crit))
+                if np.isfinite(u_crit[n]):
+                    tmp_match[g,u_crit[n].astype(int)]=c
+        corresponding_cluster[i,:]=maxmatch_from_contingency_matrix(tmp_match, 0.5)
+    return corresponding_cluster
+
+
+def maxmatch_from_contingency_matrix(con_mat, minmatch):
+    corresponding_cluster = np.full([con_mat.shape[0]], np.nan)
+    while np.max(con_mat)>=minmatch:
+        max_match = np.where(con_mat == np.max(con_mat))
+        corresponding_cluster[max_match[0][0]]=max_match[1][0]
+        con_mat[max_match[0][0],:]=np.zeros(shape=[con_mat.shape[1]])
+        con_mat[:,max_match[1][0]] = con_mat[:,max_match[1][0]]-con_mat[:,max_match[1][0]]
+    return corresponding_cluster
