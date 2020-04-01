@@ -4,6 +4,8 @@ import numpy as np
 from scipy import sparse as sp
 import copy
 
+from loocv_assigmatcher_nov import get_maxmatches, get_co_cluster_count
+
 
 def identify_set_and_fold(current_proc, n_cv_folds):
     folds_per_run = n_cv_folds * n_cv_folds
@@ -20,25 +22,25 @@ def select_trainset(cv_assignment, mainfold, subfold):
     )[0]
 
 
-def select_testset(X, cv_assignment, mainfold, subfold):
+def select_testset(cv_assignment, mainfold, subfold):
     return np.where(
         (cv_assignment[:, mainfold] == subfold)
         & (~np.isnan(cv_assignment[:, mainfold]))
     )[0]
 
 
-def colorscatter(X_e, Y, d, ax):
+def colorscatter(x, y, d, ax):
     try:
-        groups = set(Y[~np.isnan(Y)])
+        groups = set(y[~np.isnan(y)])
     except:
-        groups = np.unique(Y)
+        groups = np.unique(y)
     colors = matplotlib.cm.tab10(np.linspace(0, 1, 10))
     ctr = -1
     for g in groups:
         ctr += 1
-        findme = np.where(Y == g.astype(int))[0]
+        findme = np.where(y == g.astype(int))[0]
         cc = np.expand_dims(colors[ctr], axis=0)
-        ax.scatter(X_e[findme, 0], X_e[findme, 1], c=cc, s=d[findme] * 5)
+        ax.scatter(x[findme, 0], x[findme, 1], c=cc, s=d[findme] * 5)
     plt.legend(groups)
 
 
@@ -113,9 +115,9 @@ def contingency_clustering_match(assignment1, assignment2):
             unique_loc0 = np.unique(loc_highest_match[0])
             unique_loc1 = np.unique(loc_highest_match[1])
             if (
-                len(unique_loc0)
-                == len(loc_highest_match[0]) & len(unique_loc1)
-                == len(loc_highest_match[1])
+                    len(unique_loc0)
+                    == len(loc_highest_match[0]) & len(unique_loc1)
+                    == len(loc_highest_match[1])
             ):
                 assignment_match[loc_highest_match[0][0]] = loc_highest_match[1][0]
                 manipulated_contingency[loc_highest_match[0][0], :] = 0
@@ -134,23 +136,6 @@ def contingency_clustering_match(assignment1, assignment2):
 
     return contingency, assignment_match, manipulated_contingency
 
-
-def get_co_cluster_count(A):
-    co_cluster_count = np.full([A.shape[1], A.shape[1]], 0.00)
-    for a1 in range(A.shape[1]):
-        for a2 in range(A.shape[1]):
-            if a1 > a2:
-                m = len(np.where(A[:, a1] == A[:, a2])[0])
-                i = A.shape[1] - len(
-                    np.unique(
-                        np.append(
-                            np.where(np.isnan(A[:, a1]))[0],
-                            np.where(np.isnan(A[:, a2]))[0],
-                        )
-                    )
-                )
-                co_cluster_count[a1, a2] = m / i
-    return co_cluster_count
 
 
 def ecdf(x):
@@ -176,63 +161,51 @@ def get_pac(con_mat):
     return pac
 
 
-def n_clus_retrieval_chk(A):
-    n_maxcluster=np.zeros(shape=[A.shape[1]])
-    pacs = np.zeros ( shape=[ A.shape[ 1 ] ] )
-    for ngroups in range(A.shape[1]):
-        A2=A[:,ngroups,:]
-        co_cluster_count = get_co_cluster_count ( A2 )
+def n_clus_retrieval_chk(cluster_assignments):
+    n_maxcluster = np.zeros(shape=[cluster_assignments.shape[1]])
+    pacs = np.zeros(shape=[cluster_assignments.shape[1]])
+    for ngroups in range(cluster_assignments.shape[1]):
+        cluster_assignments_k = cluster_assignments[:, ngroups, :]
+        co_cluster_count = get_co_cluster_count(cluster_assignments_k)
         try:
-            pacs[ngroups]=get_pac(co_cluster_count)
+            pacs[ngroups] = get_pac(co_cluster_count)
         except:
-            pacs[ngroups]=0.0
+            pacs[ngroups] = 0.0
 
-        maxmatches, findmax = get_maxmatches ( A2, co_cluster_count, 1 - 0.2 )
+        maxmatches, findmax = get_maxmatches(cluster_assignments_k, co_cluster_count, 1 - 0.2)
 
-        final_assignment = [ ]
-        for n in range ( maxmatches.shape[ 1 ] ):
-            if len ( final_assignment ) > 0:
-                tmp_match_pct = np.zeros ( len ( final_assignment ) )
-                for clus in range ( len ( final_assignment ) ):
-                    tmp_match_pct[ clus ] = percent_overlap_vectors (
-                        maxmatches[ :, n ], final_assignment[ clus ]
-                    )
-                if np.max ( tmp_match_pct ) < 25:
-                    final_assignment.append ( maxmatches[ :, n ] )
-            else:
-                final_assignment.append ( maxmatches[ :, n ] )
-        n_maxcluster[ngroups] = (len ( final_assignment ))
-    u_cr = np.unique ( n_maxcluster )
-    cr_count = [ len ( np.where ( n_maxcluster == i )[ 0 ] ) for i in u_cr ]
-    max_cr=np.max(cr_count)
-    find_max_cr=np.where(cr_count==max_cr)
+        final_assignment = get_final_assignment(maxmatches, 25)
+
+        n_maxcluster[ngroups] = (len(final_assignment))
+    u_cr = np.unique(n_maxcluster)
+    cr_count = [len(np.where(n_maxcluster == i)[0]) for i in u_cr]
+    max_cr = np.max(cr_count)
+    find_max_cr = np.where(cr_count == max_cr)
 
     return n_maxcluster, pacs, u_cr[find_max_cr[0][0]]
 
-def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
-    max_match = np.max(co_cluster_count) * ratio_of_max_as_lower
-    findmax = np.where(co_cluster_count >= max_match)
-    print(
-        "highest match frequency=",
-        str(max_match),
-        "occurring for",
-        str(len(findmax[0])),
-        "pairs.",
-    )
-    maxmatches = np.full([A.shape[1], len(findmax[0]),], np.nan)
-    for n in range(len(findmax[0])):
-        a1 = findmax[0][n]
-        a2 = findmax[1][n]
-        matches = np.where(A[:, a1] == A[:, a2])[0]
-        maxmatches[matches, n] = A[matches, a1]
-    return maxmatches, findmax
+
+
+def match_assignments_to_final_assignments(cluster_assignments, final_assignment):
+    for n in range(cluster_assignments.shape[0]):
+        tmp_match_pct = np.zeros(len(final_assignment))
+        for clus in range(len(final_assignment)):
+            tmp_match_pct[clus] = percent_overlap_vectors(
+                cluster_assignments[], final_assignment[clus]
+            )
 
 
 def percent_overlap_vectors(a1, a2):
+    if len(a1)==len(a2):
+        n_overlap = len(a1) - len(np.unique(np.append(np.where(np.isnan(a1))[0], np.where(np.isnan(a2))[0])))
+        n_matches=len(np.where(a1-a2==0)[0])
+        pct_overlap = (n_matches * 100)/n_overlap
+    else:
+        raise Exception('a1 and a2 must have the same dimensions')
+    return pct_overlap
 
-    return ((len(np.where(a2 - a1 == 0)[0])) * 100) / (
-        a1.shape[0] - len(np.where(np.isnan(a1))[0])
-    )
+
+
 
 
 def check_equality(maxmatches):
@@ -243,7 +216,7 @@ def check_equality(maxmatches):
                 np.where(maxmatches[:, m] - maxmatches[:, n] == 0)[0]
             )
             identical_values[n, m] = (identical_values[n, m] * 100) / (
-                maxmatches.shape[0] - len(np.where(np.isnan(maxmatches[:, n]))[0])
+                    maxmatches.shape[0] - len(np.where(np.isnan(maxmatches[:, n]))[0])
             )
     overlap = np.where(identical_values > 75)
     non_overlap = np.where(identical_values < 25)
