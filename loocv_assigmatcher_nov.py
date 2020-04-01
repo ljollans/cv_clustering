@@ -11,6 +11,14 @@ from scipy import sparse as sp
 
 from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans
 
+def return_train_data(X, mainfold, subfold):
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+    trainset=select_trainset(cv_assignment, mainfold, subfold)
+    return X[trainset,:]
+
 
 def getloopcount(savestr, null):
     # collect results from fold-wise run of GMM full covariance with LOOCV
@@ -37,11 +45,7 @@ def getloopcount(savestr, null):
     return ex1
 
 
-def get_k_from_bic(savedir, ex1, null):
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s',
-            'Tvct_tvc_s',
-            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s', 'Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s',
-            'Tct_Scs_s', 'Tct_tc_s', 'Scs_sc_s', 'Tct_Scs_tc_sc_s']
+def get_k_from_bic(savedir, ex1, null,sets):
 
     sil = np.full([398, 8, 4, 4, 2, len(sets)], np.nan)
     cal = np.full([398, 8, 4, 4, 2, len(sets)], np.nan)
@@ -54,7 +58,7 @@ def get_k_from_bic(savedir, ex1, null):
     best_bic = np.full([4, 2, len(sets)], np.nan)
     pct_agreement_k = np.zeros(shape=[4, 4, 2, len(sets)])
 
-    for s in range(12):#len(sets)):
+    for s in range(len(sets)):
         for ctr in range(2):
             if null == 1:
                 if ctr == 1:
@@ -98,13 +102,6 @@ def get_k_from_bic(savedir, ex1, null):
                     best_k_mf[mainfold, ctr, s] = \
                     np.where(bic_mean_all_loocv_sf == np.nanmin(bic_mean_all_loocv_sf))[0]
 
-                    for mainfold in range(4):
-                        for subfold in range(4):
-                            ct_match = len(
-                                np.where(best_k_loocv[mainfold, subfold, :, ctr, s] == best_k_mf[mainfold, ctr, s])[0])
-                            ct_nonnan = len(np.where(np.isfinite(best_k_loocv[mainfold, subfold, :, ctr, s]))[0])
-                            pct_agreement_k[mainfold, subfold, ctr, s] = (ct_match * 100) / ct_nonnan
-
                     best_bic[mainfold, ctr, s] = np.nanmean(
                         bic[:, best_k_mf[mainfold, ctr, s].astype(int), mainfold, :, ctr, s])
                     best_sil[mainfold, ctr, s] = np.nanmean(
@@ -112,15 +109,18 @@ def get_k_from_bic(savedir, ex1, null):
                     best_cal[mainfold, ctr, s] = np.nanmean(
                         cal[:, best_k_mf[mainfold, ctr, s].astype(int), mainfold, :, ctr, s])
 
+                for mainfold in range(4):
+                    for subfold in range(4):
+                        ct_match = len(
+                            np.where(best_k_loocv[mainfold, subfold, :, ctr, s] == best_k_mf[mainfold, ctr, s])[0])
+                        ct_nonnan = len(np.where(np.isfinite(best_k_loocv[mainfold, subfold, :, ctr, s]))[0])
+                        pct_agreement_k[mainfold, subfold, ctr, s] = (ct_match * 100) / ct_nonnan
+
     return best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic, pct_agreement_k
 
 
-def get_clusassignments_from_LOOCV(set, mainfold, subfold):
+def get_clusassignments_from_LOOCV(set, mainfold, subfold,sets,savedir):
     fold_number = (4 * mainfold) + subfold
-
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
-            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s']
-    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
 
     cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
     with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:

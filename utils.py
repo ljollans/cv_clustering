@@ -28,7 +28,6 @@ def select_testset(cv_assignment, mainfold, subfold):
         & (~np.isnan(cv_assignment[:, mainfold]))
     )[0]
 
-
 def colorscatter(x, y, d, ax):
     try:
         groups = set(y[~np.isnan(y)])
