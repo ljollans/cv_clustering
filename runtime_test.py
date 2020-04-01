@@ -1,4 +1,4 @@
-from loocv_assigmatcher_nov import getSILCALBIC, getloopcount, plot_bic_violin, get_clusassignments_from_LOOCV, \
+from loocv_assigmatcher_nov import get_k_from_bic, getloopcount, plot_bic_violin, get_clusassignments_from_LOOCV, \
     get_co_cluster_count, get_final_assignment, get_maxmatches, k_workup_mainfold, \
     match_assignments_to_final_assignments, get_aggregated_patterns, recode_iteration_assignments, \
     rand_score_comparison, collect_betas_for_corresponding_clus

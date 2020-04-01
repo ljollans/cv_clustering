@@ -37,8 +37,9 @@ def getloopcount(savestr, null):
     return ex1
 
 
-def getSILCALBIC(savedir, ex1, null):
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
+def get_k_from_bic(savedir, ex1, null):
+    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s',
+            'Tvct_tvc_s',
             'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s', 'Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s',
             'Tct_Scs_s', 'Tct_tc_s', 'Scs_sc_s', 'Tct_Scs_tc_sc_s']
 
@@ -52,7 +53,7 @@ def getSILCALBIC(savedir, ex1, null):
     best_cal = np.full([4, 2, len(sets)], np.nan)
     best_bic = np.full([4, 2, len(sets)], np.nan)
 
-    for s in range(len(sets)):
+    for s in range(12):#len(sets)):
         for ctr in range(2):
             if null == 1:
                 if ctr == 1:
@@ -82,17 +83,19 @@ def getSILCALBIC(savedir, ex1, null):
                             bic[:, :, mainfold, subfold, ctr, s] = pickle.load(file)
 
                         for loocv in range(bic.shape[0]):
-                            if len(np.where(np.isnan(bic[loocv, :, mainfold, subfold, ctr, s])))==0:
+                            if len(np.where(np.isnan(bic[loocv, :, mainfold, subfold, ctr, s]))[0]) == 0:
                                 best_k_loocv[mainfold, subfold, loocv, ctr, s] = np.where(
                                     bic[loocv, :, mainfold, subfold, ctr, s] == np.nanmin(
                                         bic[loocv, :, mainfold, subfold, ctr, s]))[0]
 
                         bic_mean_all_loocv = np.nanmean(bic[:, :, mainfold, subfold, ctr, s], axis=0)
+
                         best_k_sf[mainfold, subfold, ctr, s] = \
-                        np.where(bic_mean_all_loocv == np.nanmin(bic_mean_all_loocv))[0]
+                            np.where(bic_mean_all_loocv == np.nanmin(bic_mean_all_loocv))[0]
 
                     bic_mean_all_loocv_sf = np.nanmean(np.nanmean(bic[:, :, mainfold, :, ctr, s], axis=0), axis=1)
-                    best_k_mf[mainfold, ctr, s] = np.where(bic_mean_all_loocv_sf == np.nanmin(bic_mean_all_loocv_sf))[0]
+                    best_k_mf[mainfold, ctr, s] = \
+                    np.where(bic_mean_all_loocv_sf == np.nanmin(bic_mean_all_loocv_sf))[0]
 
                     best_bic[mainfold, ctr, s] = np.nanmean(
                         bic[:, best_k_mf[mainfold, ctr, s].astype(int), mainfold, :, ctr, s])
@@ -171,7 +174,7 @@ def k_workup_mainfold(mainfold, set):
         cv_assignment = np.array(list(reader)).astype(float)
 
     ex1 = getloopcount(savedir, 0)
-    [bestSIL, bestCAL, bestnclus_mf, bestnclus_sf, SIL, CAL, BIC] = getSILCALBIC(savedir, ex1, 0)
+    [bestSIL, bestCAL, bestnclus_mf, bestnclus_sf, SIL, CAL, BIC] = get_k_from_bic(savedir, ex1, 0)
     fig = plt.figure();
     plt.rc('font', size=8)
     ctr = 0
