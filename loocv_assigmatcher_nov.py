@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import sparse as sp
 
-from utils import select_trainset, percent_overlap_vectors, get_pac
+from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans
 
 
 def getsubfoldbetas(savedir,s,ctr, nclus,null):
@@ -239,7 +239,7 @@ def k_workup_mainfold(mainfold,set):
 
         # load data
         pkl_filename = (savedir + sets[set] + 'allcluslabels_fold' + str (
-            subfold ) + '.pkl')
+            (mainfold*4)+subfold ) + '.pkl')
         with open ( pkl_filename, "rb" ) as file:
             Aorig = pickle.load ( file )
         trainset = select_trainset ( cv_assignment, mainfold, subfold )
@@ -480,3 +480,54 @@ def maxmatch_from_contingency_matrix(con_mat, minmatch):
         con_mat[max_match[0][0],:]=np.zeros(shape=[con_mat.shape[1]])
         con_mat[:,max_match[1][0]] = con_mat[:,max_match[1][0]]-con_mat[:,max_match[1][0]]
     return corresponding_cluster
+
+def rand_score_comparison(A,consensus_label):
+    rand_all = np.full([A.shape[0], A.shape[0]], np.nan)
+    for a1 in range(A.shape[0]):
+        for a2 in range(A.shape[0]):
+            if a2 > a1:
+                rand_all[a1, a2] = rand_score_withnans(A[a1, :], A[a2, :])
+
+    # plt.imshow(rand_all); plt.colorbar(); plt.show()
+    print('nanmedian', np.nanmedian(rand_all))
+    print('nanmean', np.nanmean(rand_all))
+    print('nanmin', np.nanmin(rand_all))
+
+    rand_aftermatch = [rand_score_withnans(consensus_label, A[i, :]) for i in range(A.shape[0])]
+    print('aft nanmedian', np.nanmedian(rand_aftermatch))
+    print('aft nanmean', np.nanmean(rand_aftermatch))
+    print('aft nanmin', np.nanmin(rand_aftermatch))
+    return rand_all, rand_aftermatch
+
+
+def collect_betas_for_corresponding_clus(corresponding_cluster,set, mainfold,subfold,k):
+    n_iterations,n_groups=corresponding_cluster.shape
+
+    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
+            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s']
+    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+
+    pkl_filename = (savedir + sets[set] + 'BETAS_fold' + str((mainfold*4)+subfold) + '.pkl')
+    with open(pkl_filename, "rb") as file:
+        BETAS = pickle.load(file)
+
+    trainset = select_trainset(cv_assignment, mainfold, subfold)
+    BETAS=BETAS[trainset,k-2,:,:] # i x k x n_features
+
+    new_betas_list=[]
+    new_betas_array = []
+    for groups in range(n_groups):
+        new_betas_list.append([])
+        new_betas_array.append([])
+        for i in range(n_iterations):
+            crit=corresponding_cluster[i,groups]
+            if np.isfinite(crit):
+                new_betas_list[groups].append(BETAS[i,crit.astype(int),:])
+        new_betas_array[groups]=np.full([BETAS.shape[2],len(new_betas_list[groups])],np.nan)
+        for i in range(len(new_betas_list[groups])):
+            new_betas_array[groups][:,i]=new_betas_list[groups][i]
+    return new_betas_array

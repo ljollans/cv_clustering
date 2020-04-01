@@ -1,6 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import sklearn
 from scipy import sparse as sp
 import copy
 
@@ -148,6 +149,11 @@ def max_min_val_check(fit_vals, max_thresh,min_thresh):
     f = np.where((m1 == 1) & (m2 ==fit_vals.shape[1] - 1))
     return f[0]
 
-
+def rand_score_withnans(a1,a2):
+    a1 = np.delete(a1, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a1))[0])
+    a1 = np.delete(a1, np.where(np.isnan(a1))[0])
+    return sklearn.metrics.adjusted_rand_score(a1,a2)
 
 
