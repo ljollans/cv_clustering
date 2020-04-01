@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from utils import ecdf, distinctiveness_highest_val, sdremoved_highest_val
+from utils import ecdf, sdremoved_highest_val, max_min_val_check
 
 set = 1
 subfold = 0
@@ -20,24 +20,21 @@ A2=get_clusassignments_from_LOOCV(set,mainfold,subfold)
 A=A2[:,4,:]
 co_cluster_count=get_co_cluster_count(A)
 
-maxmatches, findmax = get_maxmatches(A, co_cluster_count, .8)
+max_matches, max_locs = get_maxmatches(A, co_cluster_count, .8) # pair assignment patterns with high co-clustering
+final_assignment = get_final_assignment(max_matches, 25) # unique assignment patterns from best pairs
+match_pct = match_assignments_to_final_assignments(A, final_assignment) # fit of all observations to these patterns
+meet_fit_requirements = max_min_val_check(match_pct,50,25) # observations that can clearly be assigned to one of the patterns
 
-print(maxmatches.shape)
+aggregated_patterns=[]
+for p in range(len(final_assignment)):
+    aggregated_patterns.append([])
 
-final_assignment = get_final_assignment(maxmatches, 25)
-print(len(final_assignment))
+for ppt in meet_fit_requirements:
+    ppt_fit=np.where(match_pct[ppt,:]>50)[0]
+    aggregated_patterns[ppt_fit[0]].append(A[:,ppt])
 
-match_pct = match_assignments_to_final_assignments(A, final_assignment)
-max_fit=np.max(match_pct,axis=1)
-
-
+print([len(aggregated_patterns[i]) for i in range(len(final_assignment))])
 
 
-print(len(np.where(max_fit>=50)[0]),' have fit 50% or higher')
-clear_max1, clear_max2, clear_max3=sdremoved_highest_val(match_pct)
-print(len(clear_max1),'have highest match more than 1SD above the mean')
-#print(len(clear_max2),'have highest match more than 2SD above the mean')
-#print(len(clear_max3),'have highest match more than 3SD above the mean')
-plt.hist(max_fit-np.mean(match_pct,axis=1)); plt.show()
-## only use pct >=50 overlap
-print(len(np.where(max_fit[clear_max1]>=50)[0]),'also have fit 50% or higher')
+
+

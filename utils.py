@@ -143,7 +143,10 @@ def max_min_val_check(fit_vals, max_thresh,min_thresh):
     a = fit_vals.shape
     if a[1] > a[0]:
         fit_vals = fit_vals.T
-    max_check = (fit_vals-max_thresh)>0
+    m1 = np.sum(((fit_vals - max_thresh) > 0), axis=1)
+    m2 = np.sum(((fit_vals - min_thresh) < 0), axis=1)
+    f = np.where((m1 == 1) & (m2 ==fit_vals.shape[1] - 1))
+    return f[0]
 
 
 
