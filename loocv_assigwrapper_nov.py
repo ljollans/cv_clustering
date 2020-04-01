@@ -89,7 +89,7 @@ for s in range(len(sets)):
                 corresponding_cluster = recode_iteration_assignments(aggregated_patterns_arrays, k)
                 # aggregate the beta weights from all matched iteration clusters
                 aggregated_betas, new_betas = collect_betas_for_corresponding_clus(
-                    corresponding_cluster, s, mainfold, subfold, k
+                    corresponding_cluster, s, mainfold, subfold, k, sets
                 )
 
                 allbetas[mainfold,subfold,:aggregated_betas.shape[1],:]=aggregated_betas.T

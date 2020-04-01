@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import sparse as sp
 
-from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans
+from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check
+
 
 def return_train_data(X, mainfold, subfold):
     cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
@@ -234,7 +235,7 @@ def get_co_cluster_count(cluster_assignments):
         for n2 in range(cluster_assignments.shape[1]):
             if n1 > n2:
                 co_cluster_sum = len(np.where(cluster_assignments[:, n1] == cluster_assignments[:, n2])[0])
-                co_assignment_instances = cluster_assignments.shape[1] - len(
+                co_assignment_instances = cluster_assignments.shape[0] - len(
                     np.unique(
                         np.append(
                             np.where(np.isnan(cluster_assignments[:, n1]))[0],
@@ -299,8 +300,8 @@ def get_final_assignment(maxmatches, max_pct):
 
 
 def match_assignments_to_final_assignments(cluster_assignments, final_assignment):
-    match_pct = np.zeros(shape=[cluster_assignments.shape[0], len(final_assignment)])
-    for n in range(cluster_assignments.shape[0]):
+    match_pct = np.zeros(shape=[cluster_assignments.shape[1], len(final_assignment)])
+    for n in range(cluster_assignments.shape[1]):
         for clus in range(len(final_assignment)):
             match_pct[n, clus] = percent_overlap_vectors(
                 cluster_assignments[:, n], final_assignment[clus]
@@ -367,22 +368,20 @@ def rand_score_comparison(A, consensus_label):
                 rand_all[a1, a2] = rand_score_withnans(A[a1, :], A[a2, :])
 
     # plt.imshow(rand_all); plt.colorbar(); plt.show()
-    print('nanmedian', np.nanmedian(rand_all))
-    print('nanmean', np.nanmean(rand_all))
-    print('nanmin', np.nanmin(rand_all))
+    print('median rand score between iterations:', np.nanmedian(rand_all))
+    print('mean rand score between iterations:', np.nanmean(rand_all))
+    print('smallest rand score between iterations:', np.nanmin(rand_all))
 
     rand_aftermatch = [rand_score_withnans(consensus_label, A[i, :]) for i in range(A.shape[0])]
-    print('aft nanmedian', np.nanmedian(rand_aftermatch))
-    print('aft nanmean', np.nanmean(rand_aftermatch))
-    print('aft nanmin', np.nanmin(rand_aftermatch))
+    print('median rand score between the consensus assignment and the iteration assignments:', np.nanmedian(rand_aftermatch))
+    print('mean rand score between the consensus assignment and the iteration assignments:', np.nanmean(rand_aftermatch))
+    print('smallest rand score between the consensus assignment and the iteration assignments:', np.nanmin(rand_aftermatch))
     return rand_all, rand_aftermatch
 
 
-def collect_betas_for_corresponding_clus(corresponding_cluster, set, mainfold, subfold, k):
+def collect_betas_for_corresponding_clus(corresponding_cluster, set, mainfold, subfold, k, sets):
     n_iterations, n_groups = corresponding_cluster.shape
 
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
-            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s']
     savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
     cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
     with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
@@ -412,3 +411,55 @@ def collect_betas_for_corresponding_clus(corresponding_cluster, set, mainfold, s
         aggregated_betas[:, groups] = np.median(new_betas_array[groups], axis=1)
 
     return aggregated_betas, new_betas_array
+
+def get_consensus_labels(A,k, verbose):
+
+    # calculate co-clustering ratio for all observation pairs
+    co_cluster_count = get_co_cluster_count(A)
+
+    # choose the best matching pairs
+    max_matches, max_match_locs = get_maxmatches(A, co_cluster_count, 0.8)
+
+    # use the best pairs to identify unique assignment patterns corresponding to clusters
+    final_assignment = get_final_assignment(max_matches, 25)
+    if verbose==1:
+        print('identified', len(final_assignment), 'unique patterns')
+
+    # calculate how well all observations fit to each of these top assignment patterns
+    match_pct = match_assignments_to_final_assignments(A, final_assignment)
+    if verbose==1:
+        #plt.hist(np.max(match_pct,axis=1)); plt.title('highest % overlap for assignments across the 6 iterations'); plt.show()
+        print('median fit to best fitting pattern is',np.median(np.max(match_pct,axis=1)))
+
+    # pick those observations that have a clear membership to one of the patterns
+    meet_fit_requirements = max_min_val_check(match_pct, 50, 25)
+    if verbose==1:
+        print(len(meet_fit_requirements), 'observations passed the requirement for a good fit to a pattern')
+
+    # sort those observations into the matching pattern and collect their assignments from all iterations
+    aggregated_patterns_arrays = get_aggregated_patterns(final_assignment, meet_fit_requirements, match_pct, A)
+    if verbose==1:
+        num_p_per_g=[aggregated_patterns_arrays[g].shape[1] for g in range(len(aggregated_patterns_arrays))]
+        print('number of observations collected for each pattern:',num_p_per_g)
+
+    # for each iteration identify what cluster corresponds to the new patterns
+    corresponding_cluster = recode_iteration_assignments(aggregated_patterns_arrays, k)
+
+    # calculate consensus cluster assignment for all observations (not using betas)
+    n_groups = corresponding_cluster.shape[1]
+    n_iterations = A.shape[0]
+    n_obs = A.shape[1]
+    checkclus = np.zeros(shape=[n_groups, n_iterations, n_obs])
+    consensus_label = np.full(n_obs, np.nan)
+    for group in range(n_groups):
+        for i in range(n_iterations):
+            checkclus[group, i, np.where(A[i, :] == corresponding_cluster[i, group])[0]] = 1
+    for ppt in range(n_obs):
+        crit = np.sum(checkclus[:, :, ppt], axis=1)
+        consensus_label[ppt] = np.where(crit == np.max(crit))[0][0]
+
+    if verbose==1:
+        randall,randaftermatch = rand_score_comparison(A, consensus_label)
+
+    return consensus_label
+
