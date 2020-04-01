@@ -49,8 +49,6 @@ loopcount = getloopcount(savedir, null)
     pct_agreement_k,
 ] = get_k_from_bic(savedir, loopcount, null, sets)
 
-rand_score_labelling_type=np.zeros(shape=[len(sets),2,4,4])
-
 for s in range(len(sets)):
     for ctr in range(2):
         k = statistics.mode(best_k_mf[:, ctr, s]).astype(int)+2
@@ -67,7 +65,7 @@ for s in range(len(sets)):
             reader = csv.reader(f, delimiter=",")
             X = np.array(list(reader)).astype(float)
 
-        allbetas = np.full([4, 4, k, example_beta[0].shape[2]], np.nan)
+        allbetas = np.full([4, 4, k+3, example_beta[0].shape[2]], np.nan)
 
         for mainfold in range(4):
             for subfold in range(4):
@@ -94,34 +92,12 @@ for s in range(len(sets)):
                     corresponding_cluster, s, mainfold, subfold, k
                 )
 
-                # calculate consensus cluster assignment for all observations (not using betas)
-                n_groups = corresponding_cluster.shape[1]
-                n_iterations = A.shape[0]
-                n_obs = A.shape[1]
-                checkclus = np.zeros(shape=[n_groups, n_iterations, n_obs])
-                consensus_label = np.full(n_obs, np.nan)
-                for group in range(n_groups):
-                    for i in range(n_iterations):
-                        checkclus[group, i, np.where(A[i, :] == corresponding_cluster[i, group])[0]] = 1
-                for ppt in range(n_obs):
-                    crit = np.sum(checkclus[:, :, ppt], axis=1)
-                    consensus_label[ppt] = np.where(crit == np.max(crit))[0][0]
+                allbetas[mainfold,subfold,:aggregated_betas.shape[1],:]=aggregated_betas.T
 
-                # calculate consensus cluster assignment for all observations (using betas)
-                x_fold=return_train_data(X,mainfold, subfold)
-                y_fold=x_fold.dot(aggregated_betas)
-                consensus_label_2 = np.full(n_obs, np.nan)
-                for ppt in range(n_obs):
-                    consensus_label_2[ppt]=np.where(y_fold[ppt,:]==np.max(y_fold[ppt,:]))[0]
-
-                rand_score_labelling_type[s,ctr,mainfold,subfold]=rand_score_withnans(consensus_label,consensus_label_2)
-
-
-
-# if ctr==0:
-#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR' +  '.pkl')
-# else:
-#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR_ctrl'  + '.pkl')
-# with open(pkl_filename, 'wb') as file:
-#    pickle.dump(allbetas,file)
-# print(pkl_filename)
+        if ctr==0:
+            pkl_filename = (savedir + sets[s] + 'BETA_AGGR' +  '.pkl')
+        else:
+            pkl_filename = (savedir + sets[s] + 'BETA_AGGR_ctrl'  + '.pkl')
+        with open(pkl_filename, 'wb') as file:
+            pickle.dump(allbetas,file)
+        print(pkl_filename)
