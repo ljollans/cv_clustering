@@ -47,15 +47,10 @@ for ppt in range(n_obs):
     consensus_label[ppt]=np.where(crit==np.max(crit))[0][0]
 
 
-new_betas = collect_betas_for_corresponding_clus(corresponding_cluster,set, mainfold,subfold,k)
-fig=plt.figure()
-for n in range(len(new_betas)):
+aggregated_betas, new_betas = collect_betas_for_corresponding_clus(corresponding_cluster,set, mainfold,subfold,k)
 
-    plt.subplot(6,1,n+1)
-    print(new_betas[n].shape[1],'beta vectors for cluster',n)
-    plt.plot(new_betas[n])
-#print(consensus_label)
-#plt.scatter(np.arange(n_iterations),[rand_score_withnans(consensus_label,A[i,:]) for i in range(n_iterations)]);
+fig=plt.figure()
+plt.plot(aggregated_betas)
 plt.show()
 
 

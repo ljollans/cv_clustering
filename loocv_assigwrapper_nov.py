@@ -1,37 +1,38 @@
-import os
+from loocv_assigmatcher_nov import getSILCALBIC, getloopcount, plot_bic_violin, get_clusassignments_from_LOOCV, \
+    get_co_cluster_count, get_final_assignment, get_maxmatches, k_workup_mainfold, \
+    match_assignments_to_final_assignments, get_aggregated_patterns, recode_iteration_assignments, \
+    rand_score_comparison, collect_betas_for_corresponding_clus
 import pickle
+import csv
+import matplotlib.pyplot as plt
 import numpy as np
-os.chdir('/u/ljollans/ML_in_python')
-import loocv_assigmatcher_nov
-from loocv_assigmatcher_nov import getloopcount,match2idx,getsubfoldbetas,loocv_assigmatcher,getSILCALBIC
+import pandas as pd
+import seaborn as sns
+from sklearn.metrics import adjusted_rand_score as rand
 
-sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
+from utils import ecdf, sdremoved_highest_val, max_min_val_check, rand_score_withnans
 
-dir2='/u/ljollans/ML_in_python/allresidsjan2/full_covariance/'
-savedir=(dir2 + 'FEB_')
- 
-ex1=getloopcount((dir2 + 'FEB'),0) # check where i have all files
-[bestSIL,bestCAL,bestnclus_mf, bestnclus_sf,SIL,CAL,BIC]=getSILCALBIC(dir2 + 'FEB_',ex1,0)
+savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+null = 0
 
-import sys
-s=int(sys.argv[1])
-if s<len(sets):
-    ctr=0
-else:
-    s=s-len(sets)
-    ctr=1
-print(s)
-nclus2use=np.array([4,4,1,4,4,1,4,4,1,4,4,1])
-nclus=nclus2use[s]
-#nclus=bestnclus_mf[0,ctr,s].astype(int)
-print(nclus)
-allbetas=getsubfoldbetas(savedir,s,ctr, nclus,0)
-if ctr==0:
-    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR' +  '.pkl')
-else:
-    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR_ctrl'  + '.pkl')
-with open(pkl_filename, 'wb') as file:
-    pickle.dump(allbetas,file)  
-print(pkl_filename)
- 
-               
+loopcount = getloopcount(savedir, null)
+[best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic] = getSILCALBIC(savedir, loopcount,
+                                                                                                 null)
+pct_agreement_k = np.zeros(shape=[4, 4, 2, 24])
+for mainfold in range(4):
+    for subfold in range(4):
+        for ctr in range(2):
+            for s in range(24):
+                pct_agreement_k[mainfold, subfold, ctr, s] = (
+                    len(np.where(best_k_loocv[mainfold, subfold, :, ctr, s] == best_k_mf[mainfold, ctr, s])[0]))
+
+# print(bestnclus_sf)
+
+
+# if ctr==0:
+#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR' +  '.pkl')
+# else:
+#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR_ctrl'  + '.pkl')
+# with open(pkl_filename, 'wb') as file:
+#    pickle.dump(allbetas,file)
+# print(pkl_filename)
