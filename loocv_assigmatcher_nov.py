@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import sparse as sp
 
-from utils import select_trainset, n_clus_retrieval_chk, percent_overlap_vectors
+from utils import select_trainset, percent_overlap_vectors, get_pac
 
 
 def loocv_assigmatcher(all_cluslabels):
@@ -216,6 +216,31 @@ def plot_bic_violin(BIC,mainfold,subfold):
         bic = bic.append ( tmp_df )
     sns.violinplot ( 'k', 'bic', data=bic )
 
+
+def n_clus_retrieval_chk(cluster_assignments):
+    n_maxcluster = np.zeros(shape=[cluster_assignments.shape[1]])
+    pacs = np.zeros(shape=[cluster_assignments.shape[1]])
+    for ngroups in range(cluster_assignments.shape[1]):
+        cluster_assignments_k = cluster_assignments[:, ngroups, :]
+        co_cluster_count = get_co_cluster_count(cluster_assignments_k)
+        try:
+            pacs[ngroups] = get_pac(co_cluster_count)
+        except:
+            pacs[ngroups] = 0.0
+
+        maxmatches, findmax = get_maxmatches(cluster_assignments_k, co_cluster_count, 1 - 0.2)
+
+        final_assignment = get_final_assignment(maxmatches, 25)
+
+        n_maxcluster[ngroups] = (len(final_assignment))
+    u_cr = np.unique(n_maxcluster)
+    cr_count = [len(np.where(n_maxcluster == i)[0]) for i in u_cr]
+    max_cr = np.max(cr_count)
+    find_max_cr = np.where(cr_count == max_cr)
+
+    return n_maxcluster, pacs, u_cr[find_max_cr[0][0]]
+
+
 def k_workup_mainfold(mainfold,set):
     sets = [ 'Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
              'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s' ]
@@ -227,7 +252,7 @@ def k_workup_mainfold(mainfold,set):
 
     ex1 = getloopcount ( savedir, 0 )
     [ bestSIL, bestCAL, bestnclus_mf, bestnclus_sf, SIL, CAL, BIC ] = getSILCALBIC ( savedir, ex1, 0 )
-    fig = plt.figure ()
+    fig = plt.figure (); plt.rc('font', size=8)
     ctr = 0
     for subfold in range ( 4 ):
         ctr += 1;
@@ -249,12 +274,15 @@ def k_workup_mainfold(mainfold,set):
 
         ctr += 1;
         plt.subplot ( 4, 3, ctr );
-        plt.title ( 'cluster saturation, plateau:' + str ( plateau_cr ) )
-        plt.plot ( cr )
+        plt.title ( 'number of unique clusters across LOOCV' )
+        plt.plot ( cr ); plt.xlabel('k');
+        plt.xticks(np.arange(len(cr)), np.arange(len(cr))+2)
         ctr += 1;
         plt.subplot ( 4, 3, ctr );
-        plt.title ( 'PAC' )
-        plt.plot ( pac )
+        plt.title ( 'proportion of ambiguous clustering' )
+        plt.plot ( pac );plt.xlabel('k');
+        plt.xticks(np.arange(len(cr)), np.arange(len(cr))+2)
+    plt.subplots_adjust(0.125,0.1,0.9,0.9,0.1,0.45)
     plt.show ()
 
 
@@ -415,3 +443,12 @@ def get_final_assignment(maxmatches, max_pct):
             final_assignment.append(maxmatches[:, n])
     return final_assignment
 
+
+def match_assignments_to_final_assignments(cluster_assignments, final_assignment):
+    match_pct = np.zeros(shape=[cluster_assignments.shape[0],len(final_assignment)])
+    for n in range(cluster_assignments.shape[0]):
+        for clus in range(len(final_assignment)):
+            match_pct[n,clus] = percent_overlap_vectors(
+                cluster_assignments[:,n], final_assignment[clus]
+            )
+    return match_pct
