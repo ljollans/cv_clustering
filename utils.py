@@ -128,12 +128,23 @@ def percent_overlap_vectors(a1, a2):
     return pct_overlap
 
 
-def distinctiveness_highest_val(fit_vals):
+def sdremoved_highest_val(fit_vals):
     a=fit_vals.shape
     if a[1]>a[0]:
         fit_vals=fit_vals.T
-    clear_max = np.where((np.max(fit_vals,axis=1)-(np.mean(fit_vals,axis=1)+2*np.std(fit_vals,axis=1)))>0)[0]
-    return clear_max
+    clear_max1 = np.where((np.max(fit_vals,axis=1)-(np.mean(fit_vals,axis=1)+1*np.std(fit_vals,axis=1)))>0)[0]
+    clear_max2 = np.where((np.max(fit_vals, axis=1) - (np.mean(fit_vals, axis=1) + 2 * np.std(fit_vals, axis=1))) > 0)[
+        0]
+    clear_max3 = np.where((np.max(fit_vals, axis=1) - (np.mean(fit_vals, axis=1) + 3 * np.std(fit_vals, axis=1))) > 0)[
+        0]
+    return clear_max1, clear_max2, clear_max3
+
+def max_min_val_check(fit_vals, max_thresh,min_thresh):
+    a = fit_vals.shape
+    if a[1] > a[0]:
+        fit_vals = fit_vals.T
+    max_check = (fit_vals-max_thresh)>0
+
 
 
 

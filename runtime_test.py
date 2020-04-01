@@ -8,9 +8,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from utils import ecdf, distinctiveness_highest_val
+from utils import ecdf, distinctiveness_highest_val, sdremoved_highest_val
 
-set = 7
+set = 1
 subfold = 0
 mainfold = 0
 
@@ -29,7 +29,15 @@ print(len(final_assignment))
 
 match_pct = match_assignments_to_final_assignments(A, final_assignment)
 max_fit=np.max(match_pct,axis=1)
-clear_max=distinctiveness_highest_val(match_pct)
-print(np.min(max_fit[clear_max]))
-plt.hist(max_fit[clear_max]); plt.show()
-# only use pct >=50 overlap
+
+
+
+
+print(len(np.where(max_fit>=50)[0]),' have fit 50% or higher')
+clear_max1, clear_max2, clear_max3=sdremoved_highest_val(match_pct)
+print(len(clear_max1),'have highest match more than 1SD above the mean')
+#print(len(clear_max2),'have highest match more than 2SD above the mean')
+#print(len(clear_max3),'have highest match more than 3SD above the mean')
+plt.hist(max_fit-np.mean(match_pct,axis=1)); plt.show()
+## only use pct >=50 overlap
+print(len(np.where(max_fit[clear_max1]>=50)[0]),'also have fit 50% or higher')
