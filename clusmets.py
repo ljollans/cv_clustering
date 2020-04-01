@@ -26,15 +26,18 @@ def calculate_clustering_metrics(design):
     x = design["data"][np.where(clus_labels != -1)[0], :]
     y = clus_labels[np.where(clus_labels != -1)[0]]
     x_y_train = np.append(np.expand_dims(y, 1), x, axis=1)
-    (
-        auc_across_cv_folds,
-        f1_across_cv_folds,
-        beta_avg_across_folds,
-        overall_prediction_continuous,
-        overall_prediction_discrete,
-        auc_per_cv_fold,
-        f1_per_cv_fold,
-        betas_per_fold,
-    ) = multi_logr_bagr(10, x_y_train, design["nclus"] + 2, 4, 0)
+    try:
+        (
+            auc_across_cv_folds,
+            f1_across_cv_folds,
+            beta_avg_across_folds,
+            overall_prediction_continuous,
+            overall_prediction_discrete,
+            auc_per_cv_fold,
+            f1_per_cv_fold,
+            betas_per_fold,
+        ) = multi_logr_bagr(10, x_y_train, design["nclus"] + 2, 4, 0)
+    except:
+        multi_logr_bagr_debug(10, x_y_train, design["nclus"] + 2, 4, 0)
 
     return clus_labels, bic, sil, cal, np.mean(auc_across_cv_folds), np.mean(f1_across_cv_folds), beta_avg_across_folds

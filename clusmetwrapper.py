@@ -18,7 +18,7 @@ def clusmetwrapper(design):
     cal = np.full([n_samples, design["n_ks"]], np.nan)
     auc = np.full([n_samples, design["n_ks"]], np.nan)
     f1 = np.full([n_samples, design["n_ks"]], np.nan)
-    betas = np.full([n_samples, design["n_ks"], design["n_ks"] + 2, n_features], np.nan)
+    betas = np.full([n_samples, design["n_ks"],  n_features, design["n_ks"] + 2], np.nan)
 
     cv_assignment = design["cv_assignment"]
     train_index_sub = np.where(
@@ -28,6 +28,7 @@ def clusmetwrapper(design):
     x2 = X[train_index_sub, :]
 
     for nclus in range(design["n_ks"]):
+        print(nclus+2,'clusters')
         (
             tmp_all_clus_labels,
             bic[train_index_sub, nclus],
@@ -35,7 +36,7 @@ def clusmetwrapper(design):
             cal[train_index_sub, nclus],
             auc[train_index_sub, nclus],
             f1[train_index_sub, nclus],
-            betas[train_index_sub, nclus, :nclus+2, :]
+            betas[train_index_sub, nclus, :, :nclus + 2]
         ) = loocv_loop(x2, design["covariance"], nclus)
         for t in range(len(train_index_sub)):
             all_clus_labels[train_index_sub[t],nclus,train_index_sub]=tmp_all_clus_labels[t,:]

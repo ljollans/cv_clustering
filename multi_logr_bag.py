@@ -63,8 +63,11 @@ def multi_logr_bagr(nboot, xy, n_groups, n_cv_folds, print_output):
         truth[np.where(y == n)[0]] = 1
         groups_in_prediction=len(set(overall_prediction_discrete[:, n]))
         if groups_in_prediction > 1:
-            auc_across_cv_folds[n] = roc_auc_score(truth, overall_prediction_discrete[:, n])
-            f1_across_cv_folds[n] = f1_score(truth, overall_prediction_discrete[:, n])
+            try:
+                auc_across_cv_folds[n] = roc_auc_score(truth, overall_prediction_discrete[:, n])
+                f1_across_cv_folds[n] = f1_score(truth, overall_prediction_discrete[:, n])
+            except:
+                print(overall_prediction_discrete[:, n])
         else:
             print('WARNING! there were ' + str(len(set(overall_prediction_discrete[:,n]))) + ' groups predicted with truth having ' + str(len(set(truth))) + ' groups.')
         if print_output == 1:
@@ -82,7 +85,6 @@ def multi_logr_bagr(nboot, xy, n_groups, n_cv_folds, print_output):
         f1_per_cv_fold,
         betas_per_fold,
     )
-
 
 
 

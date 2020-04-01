@@ -4,6 +4,8 @@ from sklearn.decomposition import PCA
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from itertools import permutations
+
+from clusmetwrapper import clusmetwrapper
 from looco_loop import loocv_loop
 from loocv_assigmatcher_nov import get_co_cluster_count, get_consensus_labels, get_maxmatches, get_final_assignment, \
     match_assignments_to_final_assignments
@@ -22,28 +24,47 @@ Y=Y[ss.astype(int)]
 scaler = MinMaxScaler()
 X = scaler.fit_transform(X)
 
-############################################################
-# first basic test - analysis iteration assignment matcher
-print('test: same assignment with labels switched')
-perm = list(permutations([0,1,2]))
-A=np.full([len(perm),len(Y)],np.nan)
-for p in range(len(perm)):
-    for g in range(3):
-        A[p,np.where(Y==g)[0]]=perm[p][g]
+do_test=2;
 
-consensus_label = get_consensus_labels(A,3,1)
-print('rand score for retrieved assignment and original:',sklearn.metrics.adjusted_rand_score(consensus_label,Y))
-print()
+if do_test==1:
+    ############################################################
+    # first basic test - analysis iteration assignment matcher
+    print('test: same assignment with labels switched')
+    perm = list(permutations([0,1,2]))
+    A=np.full([len(perm),len(Y)],np.nan)
+    for p in range(len(perm)):
+        for g in range(3):
+            A[p,np.where(Y==g)[0]]=perm[p][g]
+
+    consensus_label = get_consensus_labels(A,3,1)
+    print('rand score for retrieved assignment and original:',sklearn.metrics.adjusted_rand_score(consensus_label,Y))
+    print()
 
 
-print('test: randomly permuted assignments')
-perm = list(permutations([0,1,2]))
-A=np.full([len(perm),len(Y)],np.nan)
-for p in range(len(perm)):
-    for g in range(3):
-        A[p,np.where(Y==g)[0]]=perm[p][g]
-    np.random.shuffle(A[p,:])
-consensus_label = get_consensus_labels(A,3,1)
-print('rand score for retrieved assignment and original:',sklearn.metrics.adjusted_rand_score(consensus_label,Y))
-############################################################
-# second basic test
+    print('test: randomly permuted assignments')
+    perm = list(permutations([0,1,2]))
+    A=np.full([len(perm),len(Y)],np.nan)
+    for p in range(len(perm)):
+        for g in range(3):
+            A[p,np.where(Y==g)[0]]=perm[p][g]
+        np.random.shuffle(A[p,:])
+    consensus_label = get_consensus_labels(A,3,1)
+    print('rand score for retrieved assignment and original:',sklearn.metrics.adjusted_rand_score(consensus_label,Y))
+
+elif do_test==2:
+    ############################################################
+    # second basic test - clusters retrieved
+    print('test: match for clusters retrieved with LOOCV but no k-fold CV')
+    design = {
+        "X": X,
+        "cv_assignment": np.zeros(shape=[150, 1]),
+        "mainfold": 0,
+        "subfold": 1,
+        "covariance": 'full',
+        "n_ks": 2,
+    }
+    all_clus_labels, bic, sil, cal, auc, f1, betas = clusmetwrapper(design)
+    print(np.mean(bic,axis=0))
+
+
+

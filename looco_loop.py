@@ -13,7 +13,7 @@ def loocv_loop(x_all, covariance, k):
     loocv_cal = np.full([n_samples], np.nan)
     loocv_auc = np.full([n_samples], np.nan)
     loocv_f1 = np.full([n_samples], np.nan)
-    loocv_betas = np.full([n_samples, n_features, k + 2,], np.nan)
+    loocv_betas = np.full([n_samples, n_features, k + 2], np.nan)
 
     for loocv in range(n_samples):
         x = np.delete(x_all, loocv, axis=0)

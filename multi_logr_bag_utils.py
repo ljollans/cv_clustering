@@ -62,3 +62,4 @@ def get_metrics(x, y, betas2use):
         f1 = np.nan
 
     return auc, f1, prediction_discrete, prediction_continuous
+
