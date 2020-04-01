@@ -202,7 +202,12 @@ def n_clus_retrieval_chk(A):
             else:
                 final_assignment.append ( maxmatches[ :, n ] )
         n_maxcluster[ngroups] = (len ( final_assignment ))
-    return n_maxcluster, pacs
+    u_cr = np.unique ( n_maxcluster )
+    cr_count = [ len ( np.where ( n_maxcluster == i )[ 0 ] ) for i in u_cr ]
+    max_cr=np.max(cr_count)
+    find_max_cr=np.where(cr_count==max_cr)
+
+    return n_maxcluster, pacs, u_cr[find_max_cr[0][0]]
 
 def get_maxmatches(A, co_cluster_count, ratio_of_max_as_lower):
     max_match = np.max(co_cluster_count) * ratio_of_max_as_lower

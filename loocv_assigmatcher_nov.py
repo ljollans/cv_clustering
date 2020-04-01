@@ -3,6 +3,13 @@ import sys
 import os
 import numpy as np
 import pickle
+import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
+import csv
+
+from utils import select_trainset, n_clus_retrieval_chk
+
 
 def loocv_assigmatcher(all_cluslabels):
     if all_cluslabels.shape[1]!=all_cluslabels.shape[0]:
@@ -103,12 +110,7 @@ def getsubfoldbetas(savedir,s,ctr, nclus,null):
                       #      sys.exit('more than one flag')
             allbetas[mainfold,subfold,:,:]=np.nanmean(tmpbetas,axis=0)
     return allbetas
-            
-                            
 
-
-
-    
 
 def match2idx(idx, tomatch,nclus):
     N=len(idx)
@@ -130,8 +132,8 @@ def match2idx(idx, tomatch,nclus):
 
 
 def getSILCALBIC(savedir,ex1, null):
-    #sets=['Tvc','Svc','TSvc','Tvc_tvc', 'Svc_svc','TSvc_tsvc', 'Tvct_s','Svcs_s','Tvct_Svcs_s','Tvct_tvc_s','Svcs_svc_s','Tvct_Svcs_tvc_svc_s']
-    sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
+    sets=['Tvc','Svc','TSvc','Tvc_tvc', 'Svc_svc','TSvc_tsvc', 'Tvct_s','Svcs_s','Tvct_Svcs_s','Tvct_tvc_s','Svcs_svc_s','Tvct_Svcs_tvc_svc_s']
+    #sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
         
 # get silhouette scores for all
     
@@ -179,6 +181,58 @@ def getSILCALBIC(savedir,ex1, null):
                     bestCAL[mainfold,ctr,s]=np.nanmean(CAL[:,bestnclus_mf[mainfold,ctr,s].astype(int),mainfold,:,ctr,s])
     return bestSIL,bestCAL,bestnclus_mf, bestnclus_sf, SIL, CAL, BIC
 
+
+def plot_bic_violin(BIC,mainfold,subfold):
+    bic = pd.DataFrame ( {}, columns=[ 'bic', 'k', 'ppt' ] )
+    for nclus in range ( BIC.shape[ 1 ] ):
+        tmp_df = pd.DataFrame (
+            {'bic': np.squeeze ( BIC[ :, nclus, mainfold, subfold, 0, 7 ] ),
+             'k': np.ones ( shape=[ 398 ] ) * nclus + 2,
+             'ppt': np.arange ( 398 )},
+            columns=[ 'bic', 'k', 'ppt' ] )
+        bic = bic.append ( tmp_df )
+    sns.violinplot ( 'k', 'bic', data=bic )
+
+def k_workup_mainfold(mainfold,set):
+    sets = [ 'Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
+             'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s' ]
+    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open ( (cv_assignment_dir + "CVassig398.csv"), "r" ) as f:
+        reader = csv.reader ( f, delimiter="," )
+        cv_assignment = np.array ( list ( reader ) ).astype ( float )
+
+    ex1 = getloopcount ( savedir, 0 )
+    [ bestSIL, bestCAL, bestnclus_mf, bestnclus_sf, SIL, CAL, BIC ] = getSILCALBIC ( savedir, ex1, 0 )
+    fig = plt.figure ()
+    ctr = 0
+    for subfold in range ( 4 ):
+        ctr += 1;
+        plt.subplot ( 4, 3, ctr )
+        plot_bic_violin ( BIC, mainfold, subfold );
+        plt.title ( 'BIC' )
+
+        # load data
+        pkl_filename = (savedir + sets[set] + 'allcluslabels_fold' + str (
+            subfold ) + '.pkl')
+        with open ( pkl_filename, "rb" ) as file:
+            Aorig = pickle.load ( file )
+        trainset = select_trainset ( cv_assignment, mainfold, subfold )
+        A1 = Aorig[ trainset, :, : ]
+        A2 = A1[ :, :, trainset ]
+
+        # cluster "saturation" and PAC score
+        cr, pac, plateau_cr = n_clus_retrieval_chk ( A2 )
+
+        ctr += 1;
+        plt.subplot ( 4, 3, ctr );
+        plt.title ( 'cluster saturation, plateau:' + str ( plateau_cr ) )
+        plt.plot ( cr )
+        ctr += 1;
+        plt.subplot ( 4, 3, ctr );
+        plt.title ( 'PAC' )
+        plt.plot ( pac )
+    plt.show ()
 
 # this is the contingency matrix function used in sklearn
 
@@ -242,8 +296,8 @@ def getloopcount(savestr,null):
 
     # collect results from fold-wise run of GMM full covariance with LOOCV
     # JAN1_Svc_sallcluslabels_ctrl_fold1.pkl
-    #sets=['Tvc','Svc','TSvc','Tvc_tvc', 'Svc_svc','TSvc_tsvc', 'Tvct_s','Svcs_s','Tvct_Svcs_s','Tvct_tvc_s','Svcs_svc_s','Tvct_Svcs_tvc_svc_s']
-    sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
+    sets=['Tvc','Svc','TSvc','Tvc_tvc', 'Svc_svc','TSvc_tsvc', 'Tvct_s','Svcs_s','Tvct_Svcs_s','Tvct_tvc_s','Svcs_svc_s','Tvct_Svcs_tvc_svc_s']
+    #sets=['Tc','Sc','TSc','Tc_tc','Sc_sc','TSc_tsc','Tct_s','Scs_s','Tct_Scs_s','Tct_tc_s','Scs_sc_s','Tct_Scs_tc_sc_s']
     
     import os
     import numpy as np
@@ -251,14 +305,14 @@ def getloopcount(savestr,null):
     for s in range(len(sets)):
         for fold in range(16):
             if null==0:
-                if os.path.isfile(savestr + '_' + str(sets[s]) + 'allcluslabels_fold' + str(fold) + '.pkl'):
+                if os.path.isfile(savestr  + str(sets[s]) + 'allcluslabels_fold' + str(fold) + '.pkl'):
                     ex[0,s,fold]=1
-                if os.path.isfile(savestr + '_' + str(sets[s]) + 'allcluslabels_ctrl_fold' + str(fold) + '.pkl'):
+                if os.path.isfile(savestr  + str(sets[s]) + 'allcluslabels_ctrl_fold' + str(fold) + '.pkl'):
                     ex[1,s,fold]=1
             else:
-                if os.path.isfile(savestr + '_' + str(sets[s]) + 'allcluslabels_null_fold' + str(fold) + '.pkl'):
+                if os.path.isfile(savestr + str(sets[s]) + 'allcluslabels_null_fold' + str(fold) + '.pkl'):
                     ex[0,s,fold]=1
-                if os.path.isfile(savestr + '_' + str(sets[s]) + 'allcluslabels_null_ctrl_fold' + str(fold) + '.pkl'):
+                if os.path.isfile(savestr  + str(sets[s]) + 'allcluslabels_null_ctrl_fold' + str(fold) + '.pkl'):
                     ex[1,s,fold]=1
     ex1=np.sum(ex,axis=2)
     print(ex1)
