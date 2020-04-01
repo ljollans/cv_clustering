@@ -16,27 +16,5 @@ savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
 null = 0
 
 loopcount = getloopcount(savedir, null)
-[best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic] = get_k_from_bic(savedir, loopcount,
+[best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic, pct_agreement_k] = get_k_from_bic(savedir, loopcount,
                                                                                                    null)
-pct_agreement_k = np.zeros(shape=[4, 4, 2, 24])
-for mainfold in range(4):
-    for subfold in range(4):
-        for ctr in range(2):
-            for s in range(12):
-                ct_match=len(np.where(best_k_loocv[mainfold, subfold, :, ctr, s] == best_k_mf[mainfold, ctr, s])[0])
-                ct_nonnan=len(np.where(np.isfinite(best_k_loocv[mainfold, subfold, :, ctr, s]))[0])
-                pct_agreement_k[mainfold, subfold, ctr, s] = (ct_match*100)/ct_nonnan
-
-for ctr in range(2):
-    for s in range(12):
-        print('for ctr',ctr,'set',s,'median agreement=',np.median(pct_agreement_k[:,:,ctr,s]), 'min agreement=',np.min(pct_agreement_k[:,:,ctr,s]))
-
-
-
-# if ctr==0:
-#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR' +  '.pkl')
-# else:
-#    pkl_filename = (dir2 + 'FEB_' + sets[s] + 'BETA_AGGR_ctrl'  + '.pkl')
-# with open(pkl_filename, 'wb') as file:
-#    pickle.dump(allbetas,file)
-# print(pkl_filename)

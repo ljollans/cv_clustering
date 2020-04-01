@@ -52,6 +52,7 @@ def get_k_from_bic(savedir, ex1, null):
     best_sil = np.full([4, 2, len(sets)], np.nan)
     best_cal = np.full([4, 2, len(sets)], np.nan)
     best_bic = np.full([4, 2, len(sets)], np.nan)
+    pct_agreement_k = np.zeros(shape=[4, 4, 2, len(sets)])
 
     for s in range(12):#len(sets)):
         for ctr in range(2):
@@ -97,6 +98,13 @@ def get_k_from_bic(savedir, ex1, null):
                     best_k_mf[mainfold, ctr, s] = \
                     np.where(bic_mean_all_loocv_sf == np.nanmin(bic_mean_all_loocv_sf))[0]
 
+                    for mainfold in range(4):
+                        for subfold in range(4):
+                            ct_match = len(
+                                np.where(best_k_loocv[mainfold, subfold, :, ctr, s] == best_k_mf[mainfold, ctr, s])[0])
+                            ct_nonnan = len(np.where(np.isfinite(best_k_loocv[mainfold, subfold, :, ctr, s]))[0])
+                            pct_agreement_k[mainfold, subfold, ctr, s] = (ct_match * 100) / ct_nonnan
+
                     best_bic[mainfold, ctr, s] = np.nanmean(
                         bic[:, best_k_mf[mainfold, ctr, s].astype(int), mainfold, :, ctr, s])
                     best_sil[mainfold, ctr, s] = np.nanmean(
@@ -104,7 +112,7 @@ def get_k_from_bic(savedir, ex1, null):
                     best_cal[mainfold, ctr, s] = np.nanmean(
                         cal[:, best_k_mf[mainfold, ctr, s].astype(int), mainfold, :, ctr, s])
 
-    return best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic
+    return best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic, pct_agreement_k
 
 
 def get_clusassignments_from_LOOCV(set, mainfold, subfold):
