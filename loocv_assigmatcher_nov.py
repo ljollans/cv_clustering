@@ -21,12 +21,8 @@ def return_train_data(X, mainfold, subfold):
     return X[trainset,:]
 
 
-def getloopcount(savestr, null):
+def getloopcount(savestr, null, sets):
     # collect results from fold-wise run of GMM full covariance with LOOCV
-    # JAN1_Svc_sallcluslabels_ctrl_fold1.pkl
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
-            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s', 'Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s',
-            'Tct_Scs_s', 'Tct_tc_s', 'Scs_sc_s', 'Tct_Scs_tc_sc_s']
 
     ex = np.zeros(shape=[2, len(sets), 16])
     for s in range(len(sets)):
@@ -120,7 +116,7 @@ def get_k_from_bic(savedir, ex1, null,sets):
     return best_sil, best_cal, best_bic, best_k_mf, best_k_sf, best_k_loocv, sil, cal, bic, pct_agreement_k
 
 
-def get_clusassignments_from_LOOCV(set, mainfold, subfold,sets,savedir):
+def get_clusassignments_from_LOOCV(set, mainfold, subfold,sets,savedir,null,ctr):
     fold_number = (4 * mainfold) + subfold
 
     cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
@@ -128,7 +124,12 @@ def get_clusassignments_from_LOOCV(set, mainfold, subfold,sets,savedir):
         reader = csv.reader(f, delimiter=",")
         cv_assignment = np.array(list(reader)).astype(float)
 
-    pkl_filename = (savedir + sets[set] + 'allcluslabels_fold' + str(fold_number) + '.pkl')
+    if null==1:
+        pkl_filename = (savedir + sets[set] + 'allcluslabels_null_fold' + str(fold_number) + '.pkl')
+    elif ctr==1:
+        pkl_filename = (savedir + sets[set] + 'allcluslabels_ctrl_fold' + str(fold_number) + '.pkl')
+    else:
+        pkl_filename = (savedir + sets[set] + 'allcluslabels_fold' + str(fold_number) + '.pkl')
     with open(pkl_filename, "rb") as file:
         Aorig = pickle.load(file)
     trainset = select_trainset(cv_assignment, mainfold, subfold)
@@ -137,11 +138,11 @@ def get_clusassignments_from_LOOCV(set, mainfold, subfold,sets,savedir):
     return A2
 
 
-def plot_bic_violin(BIC, mainfold, subfold):
+def plot_bic_violin(BIC, mainfold, subfold, ctr, set):
     bic = pd.DataFrame({}, columns=['bic', 'k', 'ppt'])
     for nclus in range(BIC.shape[1]):
         tmp_df = pd.DataFrame(
-            {'bic': np.squeeze(BIC[:, nclus, mainfold, subfold, 0, 7]),
+            {'bic': np.squeeze(BIC[:, nclus, mainfold, subfold, ctr, set]),
              'k': np.ones(shape=[398]) * nclus + 2,
              'ppt': np.arange(398)},
             columns=['bic', 'k', 'ppt'])
@@ -149,7 +150,7 @@ def plot_bic_violin(BIC, mainfold, subfold):
     sns.violinplot('k', 'bic', data=bic)
 
 
-def n_clus_retrieval_chk(cluster_assignments):
+def n_clus_retrieval_chk(cluster_assignments, cocluster_ratio, uniqueness_pct):
     n_maxcluster = np.zeros(shape=[cluster_assignments.shape[1]])
     pacs = np.zeros(shape=[cluster_assignments.shape[1]])
     for ngroups in range(cluster_assignments.shape[1]):
@@ -160,9 +161,9 @@ def n_clus_retrieval_chk(cluster_assignments):
         except:
             pacs[ngroups] = 0.0
 
-        maxmatches, findmax = get_maxmatches(cluster_assignments_k, co_cluster_count, 1 - 0.2)
+        maxmatches, findmax = get_maxmatches(cluster_assignments_k, co_cluster_count, cocluster_ratio)
 
-        final_assignment = get_final_assignment(maxmatches, 25)
+        final_assignment = get_final_assignment(maxmatches, uniqueness_pct)
 
         n_maxcluster[ngroups] = (len(final_assignment))
     u_cr = np.unique(n_maxcluster)
@@ -173,10 +174,8 @@ def n_clus_retrieval_chk(cluster_assignments):
     return n_maxcluster, pacs, u_cr[find_max_cr[0][0]]
 
 
-def k_workup_mainfold(mainfold, set):
-    sets = ['Tvc', 'Svc', 'TSvc', 'Tvc_tvc', 'Svc_svc', 'TSvc_tsvc', 'Tvct_s', 'Svcs_s', 'Tvct_Svcs_s', 'Tvct_tvc_s',
-            'Svcs_svc_s', 'Tvct_Svcs_tvc_svc_s']
-    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+def k_workup_mainfold(mainfold, set, sets, savedir):
+
     cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
     with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
         reader = csv.reader(f, delimiter=",")
@@ -203,7 +202,7 @@ def k_workup_mainfold(mainfold, set):
         A2 = A1[:, :, trainset]
 
         # cluster "saturation" and PAC score
-        cr, pac, plateau_cr = n_clus_retrieval_chk(A2)
+        cr, pac, plateau_cr = n_clus_retrieval_chk(A2, .8, 25)
 
         ctr += 1;
         plt.subplot(4, 3, ctr);
