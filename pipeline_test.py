@@ -61,9 +61,9 @@ elif do_test==2:
         "mainfold": 0,
         "subfold": 1,
         "covariance": 'full',
-        "n_ks": 2,
+        "n_ks": 5,
     }
-    all_clus_labels, bic, sil, cal, auc, f1, betas = clusmetwrapper(design)
+    all_clus_labels, bic, sil, cal, auc, f1, betas, n_per_classification = clusmetwrapper(design)
     print(np.mean(bic,axis=0))
 
 

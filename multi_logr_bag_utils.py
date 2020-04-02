@@ -49,7 +49,6 @@ def subsample(x, ratio=1.0):
 def get_metrics(x, y, betas2use):
     prediction_continuous = np.squeeze(x.dot(betas2use))
     prediction_discrete = np.zeros(shape=[prediction_continuous.shape[0]])
-
     try:
         fpr, tpr, thresholds = roc_curve(y, prediction_continuous)
         max_point = np.argmax(tpr - fpr)

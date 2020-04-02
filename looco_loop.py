@@ -14,8 +14,10 @@ def loocv_loop(x_all, covariance, k):
     loocv_auc = np.full([n_samples], np.nan)
     loocv_f1 = np.full([n_samples], np.nan)
     loocv_betas = np.full([n_samples, n_features, k + 2], np.nan)
+    loocv_n_across_cv_folds=np.full([n_samples,k+2],np.nan)
 
-    for loocv in range(n_samples):
+    for loocv in range(5):#n_samples):
+        print('loocv i=',loocv)
         x = np.delete(x_all, loocv, axis=0)
         save_vector = np.delete(np.arange(n_samples),loocv)
         [
@@ -26,6 +28,7 @@ def loocv_loop(x_all, covariance, k):
                 loocv_auc[loocv],
                 loocv_f1[loocv],
                 loocv_betas[loocv, :, :],
+                loocv_n_across_cv_folds[loocv,:]
             ] = calculate_clustering_metrics({'data':x, 'nclus':k, 'covariance':covariance})
 
     return (
@@ -36,4 +39,5 @@ def loocv_loop(x_all, covariance, k):
         loocv_auc,
         loocv_f1,
         loocv_betas,
+        loocv_n_across_cv_folds
     )

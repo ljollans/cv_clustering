@@ -19,6 +19,7 @@ def clusmetwrapper(design):
     auc = np.full([n_samples, design["n_ks"]], np.nan)
     f1 = np.full([n_samples, design["n_ks"]], np.nan)
     betas = np.full([n_samples, design["n_ks"],  n_features, design["n_ks"] + 2], np.nan)
+    n_per_classification = np.full([n_samples, design["n_ks"], design["n_ks"] + 2], np.nan)
 
     cv_assignment = design["cv_assignment"]
     train_index_sub = np.where(
@@ -36,9 +37,10 @@ def clusmetwrapper(design):
             cal[train_index_sub, nclus],
             auc[train_index_sub, nclus],
             f1[train_index_sub, nclus],
-            betas[train_index_sub, nclus, :, :nclus + 2]
+            betas[train_index_sub, nclus, :, :nclus + 2],
+            n_per_classification[train_index_sub,nclus,:nclus+2]
         ) = loocv_loop(x2, design["covariance"], nclus)
         for t in range(len(train_index_sub)):
             all_clus_labels[train_index_sub[t],nclus,train_index_sub]=tmp_all_clus_labels[t,:]
 
-    return all_clus_labels, bic, sil, cal, auc, f1, betas
+    return all_clus_labels, bic, sil, cal, auc, f1, betas,n_per_classification
