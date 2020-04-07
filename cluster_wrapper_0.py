@@ -88,7 +88,7 @@ for d in dumpthese:
         fold_string = "_fold" + str(current_fold) + ".pkl"
     pkl_filename = save_dir + save_str + sets[current_set] + d + fold_string
     with open(pkl_filename, "wb") as file:
-        eval("pickle.dump(" + d + ", file)")
+        eval("pickle.dump(mod." + d + ", file)")
 
 seconds = time.time()
 print("Seconds since epoch =" + str(seconds - seconds1))
