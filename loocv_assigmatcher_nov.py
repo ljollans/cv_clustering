@@ -173,6 +173,29 @@ def n_clus_retrieval_chk(cluster_assignments, cocluster_ratio, uniqueness_pct):
 
     return n_maxcluster, pacs, u_cr[find_max_cr[0][0]]
 
+def n_clus_retrieval_grid(cluster_assignments):
+    n_params=5
+    cocluster_ratio = np.linspace(2/3,1,n_params)
+    uniqueness_pct = np.linspace(0,100/3,n_params)
+
+    n_maxcluster = np.zeros(shape=[n_params,n_params,cluster_assignments.shape[1]])
+    pacs = np.zeros(shape=[cluster_assignments.shape[1]])
+    for ngroups in range(cluster_assignments.shape[1]):
+        cluster_assignments_k = cluster_assignments[:, ngroups, :]
+        co_cluster_count = get_co_cluster_count(cluster_assignments_k)
+        try:
+            pacs[ngroups] = get_pac(co_cluster_count)
+        except:
+            pacs[ngroups] = 0.0
+        for cocluster_loop in range(n_params):
+            maxmatches, findmax = get_maxmatches(cluster_assignments_k, co_cluster_count, cocluster_ratio[cocluster_loop])
+            for uniqueness_loop in range(n_params):
+                final_assignment = get_final_assignment(maxmatches, uniqueness_pct[uniqueness_loop])
+
+                n_maxcluster[cocluster_loop,uniqueness_loop,ngroups] = (len(final_assignment))
+
+    return n_maxcluster, pacs, cocluster_ratio, uniqueness_pct
+
 
 def k_workup_mainfold(mainfold, set, sets, savedir):
 
@@ -258,13 +281,13 @@ def get_maxmatches(cluster_assignments, co_cluster_count, ratio):
 
     max_match = ratio  # np.max(co_cluster_count) * ratio_of_max_as_lower
     findmax = np.where(co_cluster_count >= max_match)
-    print(
-        "highest match frequency=",
-        str(max_match),
-        "occurring for",
-        str(len(findmax[0])),
-        "pairs.",
-    )
+    #print(
+    #    "highest match frequency=",
+    #    str(max_match),
+    #    "occurring for",
+    #    str(len(findmax[0])),
+    #    "pairs.",
+    #)
     maxmatches = np.full([cluster_assignments.shape[0], len(findmax[0]), ], np.nan)
     for n in range(len(findmax[0])):
         a1 = findmax[0][n]

@@ -6,6 +6,7 @@ from clusmetwrapper import cluster
 from utils import identify_set_and_fold
 import pickle
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 seconds1 = time.time()
 
@@ -30,7 +31,7 @@ sets = [
 
 n_cv_folds = 4
 n_ks = 8
-current_set=0
+current_set=8
 
 # cv import
 with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
@@ -70,3 +71,6 @@ for d in range(len(saveasthese)):
 mod.pull_in_saves(bic, sil, cal, all_clus_labels, auc, f1, betas)
 #mod.plot_loocv()
 mod.aggregate_loocv()
+
+mod.plot_bic_pac_cr()
+

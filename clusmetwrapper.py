@@ -8,6 +8,7 @@ import pandas as pd
 import seaborn as sns
 
 from looco_loop import loocv_loop
+from loocv_assigmatcher_nov import n_clus_retrieval_chk, n_clus_retrieval_grid
 
 
 class cluster:
@@ -94,7 +95,42 @@ class cluster:
 
     def aggregate_loocv(self):
         A=self.all_clus_labels
+        A=A[self.train_index_sub,:,:]
+        A=A[:,:,self.train_index_sub]
         print(A.shape)
+        self.cr, self.pac, self.cocluster_ratio, self.uniqueness_pct = n_clus_retrieval_grid(A)
+        self.counts = [len(np.where(self.cr == i)[0]) for i in range(np.max(self.cr).astype(int) + 1)]
+
+    def plot_cr_per_k(self):
+        fig = plt.figure()
+        for nk in range(self.nk):
+            plt.subplot(2, 4, nk + 1)
+            plt.imshow(self.cr[:, :, nk], vmin=np.min(self.cr), vmax=np.max(self.cr));
+            plt.colorbar();
+            plt.title(str(nk + 2) + " clusters")
+            plt.xlabel("co-cluster cut-off")
+            plt.xticks(np.arange(5), np.linspace(.5, 1, 5))
+            plt.ylabel("cluster uniqueness cut-off")
+            plt.yticks(np.arange(5), np.linspace(0, 50, 5))
+        plt.show()
+
+    def plot_bic_pac_cr(self):
+        fig = plt.figure()
+        plot_these = ['bic', 'pac', 'counts']
+        call_these = ['BIC', 'PAC', 'Frequency of k unique clusters']
+        for p in range(len(plot_these)):
+            plt.subplot(1,3, p + 1);
+            if p==0:
+                plt.plot(np.nanmean(eval("self." + plot_these[p]), axis=0))
+            else:
+                plt.plot(eval("self." + plot_these[p]))
+            plt.title(call_these[p]);
+            if p < 2:
+                plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2)
+            else:
+                plt.xticks(np.arange(self.nk), np.arange(self.nk) + 1)
+            plt.xlabel("k")
+        plt.show()
 
 
 
