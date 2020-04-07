@@ -19,21 +19,25 @@ from sklearn.model_selection import KFold
 from multi_logr_bag_utils import bag_log, log_in_CV, get_metrics
 
 
-def multi_logr_bagr(nboot, xy, n_groups, n_cv_folds, print_output):
-    y = xy[:, 0]
-    x = xy[:, 1:]
+def multi_logr_bagr(nboot, yx, n_groups, n_cv_folds, print_output):
+    y = yx[:, 0]
+    x = yx[:, 1:]
 
     kf = KFold(n_splits=n_cv_folds)
 
     # pre-allocate arrays
+    try:
+        n_unique_in_y=len(np.unique(y.astype(int)))
+    except:
+        n_unique_in_y=len(set(y))
     overall_prediction_discrete = np.full([len(y), n_groups], np.nan)
     overall_prediction_continuous = np.full([len(y), n_groups], np.nan)
     auc_per_cv_fold = np.full([n_cv_folds, n_groups], np.nan)
     f1_per_cv_fold = np.full([n_cv_folds, n_groups], np.nan)
     betas_per_fold = np.full([x.shape[1], n_groups, n_cv_folds], np.nan)
-    auc_across_cv_folds = np.full([len(set(y))], np.nan)
-    f1_across_cv_folds = np.full([len(set(y))], np.nan)
-    n_across_cv_folds = np.full([len(set(y))], np.nan)
+    auc_across_cv_folds = np.full([n_unique_in_y], np.nan)
+    f1_across_cv_folds = np.full([n_unique_in_y], np.nan)
+    n_across_cv_folds = np.full([n_unique_in_y], np.nan)
 
     fold = -1
     for train_index, test_index in kf.split(x):

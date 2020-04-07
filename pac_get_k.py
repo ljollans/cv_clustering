@@ -1,9 +1,16 @@
-from loocv_assigmatcher_nov import getloopcount, get_k_from_bic, get_clusassignments_from_LOOCV, n_clus_retrieval_chk
+from sklearn.metrics import silhouette_score, davies_bouldin_score
+
+from loocv_assigmatcher_nov import getloopcount, get_k_from_bic, get_clusassignments_from_LOOCV, n_clus_retrieval_chk, \
+    get_consensus_labels, return_train_data
 import numpy as np
 import pickle
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import csv
+
+from multi_logr_bag import multi_logr_bagr
+from utils import select_trainset, rand_score_withnans, mutual_info_score_withnans, vmeasure_withnans
 
 savedir_null = '/Users/lee_jollans/Projects/clustering_pilot/null/JAN1_'
 savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
@@ -16,8 +23,37 @@ sets2 = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_
          'Scs_sc_s', 'Tct_Scs_tc_sc_s']
 
 
-calculate_pac_diffs=0
+calculate_pac_diffs=1
 make_pandas_df=0
+plot_pacdiffs=0
+calculate_consensus_labels_set2=0
+calculate_consensus_labels_set1=0
+calculate_consensus_labels_set_null=0
+calculate_rand_across_folds=0
+calculate_consensus_silhouette_set2=0
+calculate_consensus_davies_bouldin_set2=0
+plot_all_F1s=0
+build_new_regression_consensus_labels=0
+
+def do_plots_scores_by_sets(score,title):
+    fig=plt.figure()
+    plt.imshow(score); plt.colorbar()
+    plt.xticks(np.arange(8),np.arange(8)+2)
+    plt.yticks(np.arange(len(sets2)),sets2)
+    plt.title(title)
+    plt.show()
+    
+    fig=plt.figure(figsize=[10,10])
+    for s in range(3):
+        plt.subplot(3,1,s+1)
+        a=np.arange(0,11,3)+s
+        plt.plot(score[a.astype(int)].T)
+        ll=[sets2[a[i].astype(int)] for i in range(4)]
+        plt.legend(ll)
+        plt.xticks(np.arange(8),np.arange(8)+2)
+        plt.xlabel('k')
+        plt.ylabel(title)
+    plt.show()
 
 if calculate_pac_diffs==1:
     ex_null = getloopcount(savedir_null, 1, sets_null)
@@ -35,6 +71,14 @@ if calculate_pac_diffs==1:
     [best_sil_2, best_cal_2, best_bic_2, best_k_mf_2, best_k_sf_2,
      best_k_loocv_2, sil_2, cal_2, bic_2, pct_agreement_k_2] \
         = get_k_from_bic(savedir, ex_2, 0, sets2)
+
+    all_pacs1 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
+    all_pacs2 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
+    all_pacs_null = np.full([len(sets_null), 4, 4, 8], np.nan)
+
+    all_ucn1 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
+    all_ucn2 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
+    all_ucn_null = np.full([len(sets_null), 4, 4, 8], np.nan)
 
     all_pac_diffs1 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
     all_pac_diffs2 = np.full([len(sets_null), 4, 4, 8, 2], np.nan)
@@ -60,13 +104,25 @@ if calculate_pac_diffs==1:
                 all_pac_diffs2[set, mainfold, subfold, :, 0] = pac_null - pac20
                 all_pac_diffs2[set, mainfold, subfold, :, 1] = pac_null - pac21
 
-    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs1.pkl'
-    with open(pkl_filename, "wb") as file:
-        pickle.dump(all_pac_diffs1, file)
+                all_pacs1[set, mainfold, subfold, :, 0]=pac10
+                all_pacs1[set, mainfold, subfold, :, 1] = pac11
+                all_pacs2[set, mainfold, subfold, :, 0] = pac20
+                all_pacs2[set, mainfold, subfold, :, 1] = pac21
+                all_pacs_null[set, mainfold, subfold, :] = pac_null
 
-    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs2.pkl'
-    with open(pkl_filename, "wb") as file:
-        pickle.dump(all_pac_diffs2, file)
+                all_ucn1[set, mainfold, subfold, :, 0] = cr10
+                all_ucn1[set, mainfold, subfold, :, 1] = cr11
+                all_ucn2[set, mainfold, subfold, :, 0] = cr20
+                all_ucn2[set, mainfold, subfold, :, 1] = cr21
+                all_ucn_null[set, mainfold, subfold, :] = cr_null
+
+    dumpthese = ["all_pac_diffs1","all_pac_diffs2","all_pacs1","all_pacs2","all_pacs_null","all_ucn1","all_ucn2","all_ucn_null"]
+    for d in dumpthese:
+        pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/' + d + '.pkl'
+        with open(pkl_filename, "wb") as file:
+            eval("pickle.dump(" + d + ", file)")
+
+
 
 if make_pandas_df==1:
     pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs1.pkl'
@@ -88,7 +144,7 @@ if make_pandas_df==1:
                              'set':[set],
                              'mainfold':[mainfold],
                              'subfold':[subfold],
-                             'k':[k],
+                             'k':[k+2],
                              'ctr':[ctr],
                              'ventricles':[1],
                              },
@@ -99,18 +155,249 @@ if make_pandas_df==1:
                              'set':[set],
                              'mainfold':[mainfold],
                              'subfold':[subfold],
-                             'k':[k],
+                             'k':[k+2],
                              'ctr':[ctr],
                              'ventricles':[0],
                              },
                             columns=['pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
                         df = df.append(tmp_df)
-    df.to_csv(r'/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs.csv', index = False)     
+    df.to_csv(r'/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs.csv', index = False)
 
-df = pd.read_csv("/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs.csv") 
-fig=plt.figure()    
-for set in range(len(sets_null)):
-    plt.subplot(4,3,set+1)
-    ax = sns.lineplot(x="k",y="pacdiff",hue="ventricles",data=df[df["set"]==set])
-plt.show()
+if plot_pacdiffs==1:
+    df = pd.read_csv("/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs.csv")
+    fig=plt.figure(figsize=[15,10])
+    for set in range(len(sets_null)):
+        plt.subplot(4,3,set+1)
+        plt.title(sets2[set])
+        ax = sns.lineplot(x="k",y="pacdiff",hue="ctr",data=df[(df["set"]==set) & (df["ventricles"]==0)])
+    plt.show()
+
+
+if calculate_consensus_labels_set2==1:
+    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+
+    consensus_labels = np.full([len(sets2),2,4,4,8,398],np.nan)
+    for mainfold in range(4):
+        for subfold in range(4):
+            trainset=select_trainset(cv_assignment, mainfold, subfold)
+            for set in range(len(sets_null)):
+                for ctr in range(2):
+                    A = get_clusassignments_from_LOOCV(set, mainfold, subfold, sets2, savedir, 0, ctr)
+                    for k in range(8):
+                        A2=A[:,k,:]
+                        try:
+                            consensus_labels[set,ctr,mainfold,subfold,k,trainset] = get_consensus_labels(A2, k+2, 0)
+                        except:
+                            print(mainfold,subfold,set,ctr,k)
+
+
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels.pkl'
+    with open(pkl_filename, "wb") as file:
+        pickle.dump(consensus_labels, file)
         
+if calculate_consensus_labels_set1==1:
+    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+
+    consensus_labels = np.full([len(sets2),2,4,4,8,398],np.nan)
+    for mainfold in range(4):
+        for subfold in range(4):
+            trainset=select_trainset(cv_assignment, mainfold, subfold)
+            for set in range(len(sets_null)):
+                for ctr in range(2):
+                    A = get_clusassignments_from_LOOCV(set, mainfold, subfold, sets1, savedir, 0, ctr)
+                    for k in range(8):
+                        A2=A[:,k,:]
+                        try:
+                            consensus_labels[set,ctr,mainfold,subfold,k,trainset] = get_consensus_labels(A2, k+2, 0)
+                        except:
+                            print(mainfold,subfold,set,ctr,k)
+
+
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels_with_ventricles.pkl'
+    with open(pkl_filename, "wb") as file:
+        pickle.dump(consensus_labels, file)
+
+if calculate_consensus_labels_set_null==1:
+
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+
+    consensus_labels = np.full([len(sets2),2,4,4,8,398],np.nan)
+    for mainfold in range(4):
+        for subfold in range(4):
+            trainset=select_trainset(cv_assignment, mainfold, subfold)
+            for set in range(len(sets_null)):
+                for ctr in range(2):
+                    A = get_clusassignments_from_LOOCV(set, mainfold, subfold, sets_null, savedir_null, 1, ctr)
+                    for k in range(8):
+                        A2=A[:,k,:]
+                        try:
+                            consensus_labels[set,ctr,mainfold,subfold,k,trainset] = get_consensus_labels(A2, k+2, 0)
+                        except:
+                            print(mainfold,subfold,set,ctr,k)
+
+
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels_null.pkl'
+    with open(pkl_filename, "wb") as file:
+        pickle.dump(consensus_labels, file)
+        
+if calculate_rand_across_folds==1:
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels.pkl'
+    with open(pkl_filename, "rb") as file:
+        consensus_labels= pickle.load(file)
+    rr=np.full([len(sets_null),2,8,4],np.nan)
+    for set in range(len(sets_null)):
+        for ctr in range(2):
+            for k in range(8):
+                for mainfold in range(4):
+                    tmp_rand = np.full([4,4],np.nan)
+                    for sf1 in range(4):
+                        for sf2 in range(4):
+                            if sf2<sf1:
+                                tmp_rand[sf1,sf2]=rand_score_withnans(consensus_labels[set,ctr,mainfold,sf1,k,:],consensus_labels[set,ctr,mainfold,sf2,k,:])
+                    rr[set,ctr,k,mainfold]=np.nanmean(tmp_rand)
+        
+    do_plots_scores_by_sets(np.nanmean(rr[:,0,:,:],axis=2),'rand score')
+
+if calculate_consensus_silhouette_set2==1:
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels.pkl'
+    with open(pkl_filename, "rb") as file:
+        consensus_labels= pickle.load(file)
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+    sil = np.full([len(sets2),2,4,4,8],np.nan)
+    for set in range(len(sets_null)):
+        for ctr in range(2):
+            if ctr==1:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[set] + "_ctrl.csv"
+            else:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[set] + ".csv"
+            with open(data_path, "r") as f:
+                reader = csv.reader(f, delimiter=",")
+                x = np.array(list(reader)).astype(float)
+            for mainfold in range(4):
+                for subfold in range(4):
+                    trainset=select_trainset(cv_assignment, mainfold, subfold)
+                    x2use=return_train_data(x, mainfold, subfold)
+                    for k in range(8):
+                        try:
+                            sil[set,ctr,mainfold,subfold,k] = silhouette_score(x2use,consensus_labels[set,ctr,mainfold,subfold,k,trainset]+1)
+                        except:
+                            print('failed on k=',k,'for set/ctr',sets2[set],str,'mainfold/subfold',mainfold,subfold)
+                            print(consensus_labels[set,ctr,mainfold,subfold,k,trainset])
+    
+    do_plots_scores_by_sets(np.nanmean(np.nanmean(sil[:,0,:,:,:],axis=2),axis=1),'silhouette score')
+    
+if calculate_consensus_davies_bouldin_set2==1:
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels.pkl'
+    with open(pkl_filename, "rb") as file:
+        consensus_labels= pickle.load(file)
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+    dbs = np.full([len(sets2),2,4,4,8],np.nan)
+    for set in range(len(sets_null)):
+        for ctr in range(2):
+            if ctr==1:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[set] + "_ctrl.csv"
+            else:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[set] + ".csv"
+            with open(data_path, "r") as f:
+                reader = csv.reader(f, delimiter=",")
+                x = np.array(list(reader)).astype(float)
+            for mainfold in range(4):
+                for subfold in range(4):
+                    trainset=select_trainset(cv_assignment, mainfold, subfold)
+                    x2use=return_train_data(x, mainfold, subfold)
+                    for k in range(8):
+                        try:
+                            dbs[set,ctr,mainfold,subfold,k] = davies_bouldin_score(x2use,consensus_labels[set,ctr,mainfold,subfold,k,trainset]+1)
+                        except:
+                            print('failed on k=',k,'for set/ctr',sets2[set],str,'mainfold/subfold',mainfold,subfold)
+                            print(consensus_labels[set,ctr,mainfold,subfold,k,trainset])
+    
+    do_plots_scores_by_sets(np.nanmean(np.nanmean(dbs[:,0,:,:,:],axis=2),axis=1),'davies bouldin score')
+
+if plot_all_F1s==1:
+    all_f1s=np.full([len(sets2),2,4,4,8],np.nan)
+    for set in range(len(sets_null)):
+        for ctr in range(2):
+            for mainfold in range(4):
+                for subfold in range(4):
+                    fold=(mainfold*4)+subfold
+                    if ctr == 1:
+                        pkl_filename = (savedir + sets2[set] + 'F1_ctrl_fold' + str(fold) + '.pkl')
+                    else:
+                        pkl_filename = (savedir + sets2[set] + 'F1_fold' + str(fold) + '.pkl')
+                    with open(pkl_filename, "rb") as file:
+                        F1 = pickle.load(file)
+                    all_f1s[set,ctr,mainfold,subfold,:]=np.nanmean(F1,axis=0)
+    do_plots_scores_by_sets(np.nanmean(np.nanmean(all_f1s[:,0,:,:,:],axis=2),axis=1),'F1 score')
+
+if build_new_regression_consensus_labels==1:
+    
+    all_macro_f1=np.full([len(sets2),2,4,4,8],np.nan)
+    all_micro_f1=np.full([len(sets2),2,4,4,8],np.nan)
+    
+    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_consensuslabels.pkl'
+    with open(pkl_filename, "rb") as file:
+        consensus_labels = pickle.load(file)
+    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        cv_assignment = np.array(list(reader)).astype(float)
+
+    for set in [0]:#range(len(sets_null)):
+        for ctr in range(2):
+            if ctr == 1:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[
+                    set] + "_ctrl.csv"
+            else:
+                data_path = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/" + "MDD__" + sets2[
+                    set] + ".csv"
+            with open(data_path, "r") as f:
+                reader = csv.reader(f, delimiter=",")
+                x = np.array(list(reader)).astype(float)
+            for mainfold in range(4):
+                for subfold in range(4):
+                    trainset = select_trainset(cv_assignment, mainfold, subfold)
+                    x2use = return_train_data(x, mainfold, subfold)
+                    for k in range(8):
+                        truth=consensus_labels[set,ctr,mainfold,subfold,k,trainset]
+                        try:
+                            print(np.max(truth)+1)
+                            (
+                                auc_across_cv_folds,
+                                f1_across_cv_folds,
+                                beta_avg_across_folds,
+                                overall_prediction_continuous,
+                                overall_prediction_discrete,
+                                auc_per_cv_fold,
+                                f1_per_cv_fold,
+                                betas_per_fold,
+                                n_across_cv_folds
+                            ) = multi_logr_bagr(25, np.append(np.expand_dims(truth,axis=1),x2use,axis=1), (np.max(truth)+1.00).astype(int), 10, 0)
+                            macroF1=np.nanmean(f1_across_cv_folds)
+                            microF1=0
+                            for g in range(len(np.unique(truth))):
+                                microF1+=f1_across_cv_folds[g]*len(np.where(truth==g)[0])
+                            microF1=microF1/len((truth))
+                            all_macro_f1[set,ctr,mainfold,subfold,k]=macroF1
+                            all_micro_f1[set,ctr,mainfold,subfold,k]=microF1
+                        except:
+                            print(truth)
+                            raise Exception()
+                            

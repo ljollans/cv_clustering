@@ -4,7 +4,7 @@ import numpy as np
 import sklearn
 from scipy import sparse as sp
 import copy
-
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
 
 
 def identify_set_and_fold(current_proc, n_cv_folds):
@@ -153,7 +153,22 @@ def rand_score_withnans(a1,a2):
     a2 = np.delete(a2, np.where(np.isnan(a2))[0])
     a2 = np.delete(a2, np.where(np.isnan(a1))[0])
     a1 = np.delete(a1, np.where(np.isnan(a1))[0])
-    return sklearn.metrics.adjusted_rand_score(a1,a2)
+    return adjusted_rand_score(a1,a2)
+
+def mutual_info_score_withnans(a1,a2):
+    a1 = np.delete(a1, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a1))[0])
+    a1 = np.delete(a1, np.where(np.isnan(a1))[0])
+    return adjusted_mutual_info_score(a1,a2)
+
+
+def vmeasure_withnans(a1,a2):
+    a1 = np.delete(a1, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a2))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a1))[0])
+    a1 = np.delete(a1, np.where(np.isnan(a1))[0])
+    return v_measure_score(a1,a2)
 
 
 def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
