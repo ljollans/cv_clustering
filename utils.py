@@ -312,3 +312,21 @@ def coph_cor(consensus_matrix):
     # defined by the linkage matrix Z and matrix Y from which Z was
     # generated
     return scipy.cluster.hierarchy.cophenet(Z, Y)[0]
+
+def gmm_js(gmm_p, gmm_q, n_samples=10**5):
+    X = gmm_p.sample(n_samples)
+    log_p_X, _ = gmm_p.score_samples(X)
+    log_q_X, _ = gmm_q.score_samples(X)
+    log_mix_X = np.logaddexp(log_p_X, log_q_X)
+
+    Y = gmm_q.sample(n_samples)
+    log_p_Y, _ = gmm_p.score_samples(Y)
+    log_q_Y, _ = gmm_q.score_samples(Y)
+    log_mix_Y = np.logaddexp(log_p_Y, log_q_Y)
+
+    return (log_p_X.mean() - (log_mix_X.mean() - np.log(2))
+            + log_q_Y.mean() - (log_mix_Y.mean() - np.log(2))) / 2
+
+def get_gradient_change(v):
+    v_change = [v[i+1]-v[i] for i in range(len(v)-1)]
+    return v_change

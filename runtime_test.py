@@ -3,10 +3,12 @@ import numpy as np
 import sys
 import time
 from clusmetwrapper import cluster
+from loocv_assigmatcher_nov import get_clusassignments_from_LOOCV
 from utils import identify_set_and_fold
 import pickle
 import matplotlib.pyplot as plt
 from matplotlib import cm
+import Cluster_Ensembles as CE
 
 seconds1 = time.time()
 
@@ -32,58 +34,6 @@ sets = [
 n_cv_folds = 4
 n_ks = 8
 
-# cv import
-with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
-    reader = csv.reader(f, delimiter=",")
-    cv_assignment = np.array(list(reader)).astype(float)
+A2=get_clusassignments_from_LOOCV(0, 0, 0,sets,'/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_',0,0)
 
-all_cophenetic_correlations=np.full([12,8,2],np.nan)
-
-for current_set in range(12):
-    for ctr in range(2):
-        # data import
-        if ctr==1:
-            data_path = input_files_dir + "MDD__" + sets[current_set - len(sets)] + "_ctrl.csv"
-        else:
-            data_path = input_files_dir + "MDD__" + sets[current_set] + ".csv"
-        with open(data_path, "r") as f:
-            reader = csv.reader(f, delimiter=",")
-            data = np.array(list(reader)).astype(float)
-
-        # init mod
-        mainfold = 0
-        subfold = 0
-        mod = cluster(data, n_ks, cv_assignment, mainfold, subfold, "full")
-
-        #pull in results
-        savedir = ('/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_' + sets[current_set])
-        ctr = 0
-        fold = (mainfold * 4) + subfold
-        saveasthese = ["bic","sil","cal","all_clus_labels","auc","f1","betas"]
-        loadasthese = ["BIC","SIL","CAL","allcluslabels","AUC","F1","BETAS"]
-        for d in range(len(saveasthese)):
-            if ctr == 1:
-                fold_string = "ctrl_fold" + str(fold) + ".pkl"
-            else:
-                fold_string = "_fold" + str(fold) + ".pkl"
-            pkl_filename = savedir + loadasthese[d] + fold_string
-            with open(pkl_filename, "rb") as file:
-                tmp = pickle.load(file)
-            exec(saveasthese[d] + " = tmp")
-
-        mod.pull_in_saves(bic, sil, cal, all_clus_labels, auc, f1, betas)
-        #mod.plot_loocv()
-
-        mod.calc_consensus_matrix()
-
-        mod.cophenetic_correlation()
-
-fig=plt.figure()
-plt.subplot(3,1,1); a=np.arange(0,12,3)
-plt.plot(all_cophenetic_correlations[a,:,0].T); plt.legend([sets[a[i]] for i in range(4)]);
-plt.subplot(3,1,2); a=np.arange(0,12,3)+1
-plt.plot(all_cophenetic_correlations[a,:,0].T); plt.legend([sets[a[i]] for i in range(4)]);
-plt.subplot(3,1,3); a=np.arange(0,12,3)+2
-plt.plot(all_cophenetic_correlations[a,:,0].T); plt.legend([sets[a[i]] for i in range(4)]);
-plt.show()
-
+consensus_clustering_labels = CE.cluster_ensembles(A2[:,4,:], verbose = True, N_clusters_max = 50)

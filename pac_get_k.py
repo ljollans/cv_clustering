@@ -1,5 +1,5 @@
 from sklearn.metrics import silhouette_score, davies_bouldin_score
-
+from scipy.stats import ttest_ind
 from loocv_assigmatcher_nov import getloopcount, get_k_from_bic, get_clusassignments_from_LOOCV, n_clus_retrieval_chk, \
     get_consensus_labels, return_train_data
 import numpy as np
@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import csv
 
 from multi_logr_bag import multi_logr_bagr
-from utils import select_trainset, rand_score_withnans, mutual_info_score_withnans, vmeasure_withnans
+from utils import select_trainset, rand_score_withnans, mutual_info_score_withnans, vmeasure_withnans, \
+    get_gradient_change
 
 savedir_null = '/Users/lee_jollans/Projects/clustering_pilot/null/JAN1_'
 savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
@@ -23,9 +24,9 @@ sets2 = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_
          'Scs_sc_s', 'Tct_Scs_tc_sc_s']
 
 
-calculate_pac_diffs=1
+calculate_pac_diffs=0
 make_pandas_df=0
-plot_pacdiffs=0
+plot_pacdiffs=1
 calculate_consensus_labels_set2=0
 calculate_consensus_labels_set1=0
 calculate_consensus_labels_set_null=0
@@ -34,6 +35,7 @@ calculate_consensus_silhouette_set2=0
 calculate_consensus_davies_bouldin_set2=0
 plot_all_F1s=0
 build_new_regression_consensus_labels=0
+transform_pac_gradient_change=0
 
 def do_plots_scores_by_sets(score,title):
     fig=plt.figure()
@@ -122,25 +124,35 @@ if calculate_pac_diffs==1:
         with open(pkl_filename, "wb") as file:
             eval("pickle.dump(" + d + ", file)")
 
-
-
-if make_pandas_df==1:
-    pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs1.pkl'
-    with open(pkl_filename, "rb") as file:
-        all_pac_diffs1= pickle.load(file)
-
+if transform_pac_gradient_change==1:
     pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs2.pkl'
     with open(pkl_filename, "rb") as file:
-        all_pac_diffs2= pickle.load(file)
+        all_pacs2 = pickle.load(file)
+    print(all_pacs2.shape)
+    pac_gradient=np.full(all_pacs2.shape, np.nan)
+    for set in range(len(sets_null)):
+        for mainfold in range(4):
+            for subfold in range(4):
+                for ctr in range(2):
+                    pac_gradient[set,mainfold,subfold,:,ctr] = get_gradient_change(all_pacs2[set,mainfold,subfold,:,ctr])
+
+if make_pandas_df==1:
+    dumpthese = ["all_pac_diffs1", "all_pac_diffs2", "all_pacs1", "all_pacs2", "all_pacs_null", "all_ucn1", "all_ucn2",
+                 "all_ucn_null"]
+    for d in dumpthese:
+        pkl_filename = '/Users/lee_jollans/Projects/clustering_pilot/' + d + '.pkl'
+        with open(pkl_filename, "rb") as file:
+            exec(d +  " = pickle.load(file)")
         
-    df=pd.DataFrame({}, columns=['pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])     
+    df=pd.DataFrame({}, columns=['pac', 'pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
     for set in range(len(sets_null)):
         for mainfold in range(4):
             for subfold in range(4):
                 for ctr in range(2):
                     for k in range(8):
                         tmp_df = pd.DataFrame(
-                            {'pacdiff': all_pac_diffs1[set,mainfold,subfold,k,ctr],
+                            {'pac': all_pacs1[set,mainfold,subfold,k,ctr],
+                             'pacdiff': all_pac_diffs1[set,mainfold,subfold,k,ctr],
                              'set':[set],
                              'mainfold':[mainfold],
                              'subfold':[subfold],
@@ -148,10 +160,11 @@ if make_pandas_df==1:
                              'ctr':[ctr],
                              'ventricles':[1],
                              },
-                            columns=['pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
+                            columns=['pac','pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
                         df = df.append(tmp_df)
                         tmp_df = pd.DataFrame(
-                            {'pacdiff': all_pac_diffs2[set,mainfold,subfold,k,ctr],
+                            {'pac': all_pacs2[set,mainfold,subfold,k,ctr],
+                             'pacdiff': all_pac_diffs2[set,mainfold,subfold,k,ctr],
                              'set':[set],
                              'mainfold':[mainfold],
                              'subfold':[subfold],
@@ -159,7 +172,7 @@ if make_pandas_df==1:
                              'ctr':[ctr],
                              'ventricles':[0],
                              },
-                            columns=['pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
+                            columns=['pac','pacdiff', 'set', 'mainfold','subfold', 'k', 'ctr','ventricles'])
                         df = df.append(tmp_df)
     df.to_csv(r'/Users/lee_jollans/Projects/clustering_pilot/all_pac_diffs.csv', index = False)
 
@@ -169,9 +182,30 @@ if plot_pacdiffs==1:
     for set in range(len(sets_null)):
         plt.subplot(4,3,set+1)
         plt.title(sets2[set])
-        ax = sns.lineplot(x="k",y="pacdiff",hue="ctr",data=df[(df["set"]==set) & (df["ventricles"]==0)])
+        ax = sns.lineplot(x="k",y="pac",hue="ctr",data=df[(df["set"]==set) & (df["ventricles"]==1)])
     plt.show()
 
+if pac_ttests==1:
+    sets2 = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_Scs_s', 'Tct_tc_s',
+             'Scs_sc_s', 'Tct_Scs_tc_sc_s']
+    incl_cov=[0,0,0,1,1,1,0,0,0,1,1,1]
+    resid_globals=[0,0,0,0,0,0,1,1,1,1,1,1]
+    modality = [0, 1,2,0,1,2,0,1,2,0,1,2]
+
+    df['incl_cov'] = df['set']
+    df['resid_globals'] = df['set']
+    df['modality'] = df['set']
+    for set in range(len(sets2)):
+        df['incl_cov'].replace(set,incl_cov[set], inplace=True)
+        df['resid_globals'].replace(set, resid_globals[set], inplace=True)
+        df['modality'].replace(set, modality[set], inplace=True)
+
+    ttest_ind(df['pac'][df['incl_cov']==0],df['pac'][df['incl_cov']==1])
+
+    #ttest_ind(df['pac'][df['incl_cov']==0],df['pac'][df['incl_cov']==1])
+    #Ttest_indResult(statistic=1.9351553611611025, pvalue=0.05301708489456915)
+    #ttest_ind(df['pac'][df['resid_globals']==0],df['pac'][df['resid_globals']==1])
+    #Ttest_indResult(statistic=-52.62744503284114, pvalue=0.0)
 
 if calculate_consensus_labels_set2==1:
     savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
@@ -400,4 +434,3 @@ if build_new_regression_consensus_labels==1:
                         except:
                             print(truth)
                             raise Exception()
-                            
