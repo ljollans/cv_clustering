@@ -255,7 +255,7 @@ def get_co_cluster_count(cluster_assignments):
     co_cluster_count = np.full([cluster_assignments.shape[1], cluster_assignments.shape[1]], 0.00)
     for n1 in range(cluster_assignments.shape[1]):
         for n2 in range(cluster_assignments.shape[1]):
-            if n1 > n2:
+            if n1 < n2:
                 co_cluster_sum = len(np.where(cluster_assignments[:, n1] == cluster_assignments[:, n2])[0])
                 co_assignment_instances = cluster_assignments.shape[0] - len(
                     np.unique(

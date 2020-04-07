@@ -1,10 +1,13 @@
 import matplotlib
 import matplotlib.pyplot as plt
+import nimfa
 import numpy as np
 import pandas as pd
 import sklearn
 from scipy import sparse as sp
+import scipy
 import copy
+
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
 import pandas as pd
 import numpy as np
@@ -279,3 +282,33 @@ def create_ref_data(x, random_state=None):
         ref_data = pd.DataFrame(ref_data, columns=df_names)
 
     return ref_data
+
+def coph_cor(consensus_matrix):
+    """
+    Compute cophenetic correlation coefficient of consensus matrix, generally obtained from multiple NMF runs.
+
+    The cophenetic correlation coefficient is measure which indicates the dispersion of the consensus matrix and is based
+    on the average of connectivity matrices. It measures the stability of the clusters obtained from NMF.
+    It is computed as the Pearson correlation of two distance matrices: the first is the distance between samples induced by the
+    consensus matrix; the second is the distance between samples induced by the linkage used in the reordering of the consensus
+    matrix [Brunet2004]_.
+
+    Return real number. In a perfect consensus matrix, cophenetic correlation equals 1. When the entries in consensus matrix are
+    scattered between 0 and 1, the cophenetic correlation is < 1. We observe how this coefficient changes as factorization rank
+    increases. We select the first rank, where the magnitude of the cophenetic correlation coefficient begins to fall [Brunet2004]_.
+
+    :param idx: Used in the multiple NMF model. In factorizations following standard NMF model or nonsmooth NMF model
+                :param:`idx` is always None.
+    :type idx: None or `str` with values 'coef' or 'coef1' (`int` value of 0 or 1, respectively)
+    """
+
+    # upper diagonal elements of consensus
+    avec = np.array([consensus_matrix[i, j] for i in range(consensus_matrix.shape[0] - 1)
+                     for j in range(i + 1, consensus_matrix.shape[1])])
+    # consensus entries are similarities, conversion to distances
+    Y = 1 - avec
+    Z = scipy.cluster.hierarchy.linkage(Y, method='average')
+    # cophenetic correlation coefficient of a hierarchical clustering
+    # defined by the linkage matrix Z and matrix Y from which Z was
+    # generated
+    return scipy.cluster.hierarchy.cophenet(Z, Y)[0]

@@ -8,7 +8,8 @@ import pandas as pd
 import seaborn as sns
 
 from looco_loop import loocv_loop
-from loocv_assigmatcher_nov import n_clus_retrieval_chk, n_clus_retrieval_grid
+from loocv_assigmatcher_nov import n_clus_retrieval_chk, n_clus_retrieval_grid, get_co_cluster_count
+from utils import coph_cor
 
 
 class cluster:
@@ -132,6 +133,18 @@ class cluster:
             plt.xlabel("k")
         plt.show()
 
+    def calc_consensus_matrix(self):
+
+        self.consensus_matrix = np.full([self.nk, len(self.train_index_sub),len(self.train_index_sub)], np.nan)
+        A=self.all_clus_labels[self.train_index_sub,:,:]
+        A=A[:,:,self.train_index_sub]
+        for nclus in range(self.nk):
+            self.consensus_matrix[nclus,:,:] = get_co_cluster_count(A[:,nclus,:])
+
+    def cophenetic_correlation(self):
+        self.coph = np.full([self.nk], np.nan)
+        for nclus in range(self.nk):
+            self.coph[nclus] = coph_cor(self.consensus_matrix[nclus,:,:])
 
 
 
