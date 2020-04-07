@@ -9,18 +9,15 @@ Created on Thu Jan 16 13:50:59 2020
 import csv
 import numpy as np
 import sys
-import pickle
-import os
 import time
-
-from clusmetwrapper import clusmetwrapper
+from clusmetwrapper import cluster
 from utils import identify_set_and_fold
 
 seconds1 = time.time()
 
-input_files_dir='/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/'
-cv_assignment_dir='/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/'
-save_dir='/Users/lee_jollans/Projects/clustering_pilot/tstsave/'
+input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
+cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+save_dir = "/Users/lee_jollans/Projects/clustering_pilot/tstsave/"
 save_str = sys.argv[2]
 
 # presets
@@ -40,7 +37,7 @@ sets = [
 ]
 n_cv_folds = 4
 n_ks = 8
-with open((cv_assignment_dir + 'CVassig398.csv'), "r") as f:
+with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
     reader = csv.reader(f, delimiter=",")
     cv_assignment = np.array(list(reader)).astype(float)
 
@@ -62,18 +59,28 @@ with open(data_path, "r") as f:
     reader = csv.reader(f, delimiter=",")
     data = np.array(list(reader)).astype(float)
 
-inputs = {
-    "X": data,
-    "cv_assignment": cv_assignment,
-    "mainfold": mainfolds_subfolds[0][current_fold].astype(int),
-    "subfold": mainfolds_subfolds[1][current_fold].astype(int),
-    "covariance": sys.argv[3],
-    "n_ks": n_ks,
-}
-[all_clus_labels, BIC, SIL, CAL, AUC, F1, BETAS] = clusmetwrapper(inputs)
+
+mod = cluster(
+    data,
+    n_ks,
+    cv_assignment,
+    mainfolds_subfolds[0][current_fold].astype(int),
+    mainfolds_subfolds[1][current_fold].astype(int),
+    sys.argv[3],
+)
+mod.run()
 
 # save
-dumpthese = ["BIC", "SIL", "CAL", "all_clus_labels", "AUC", "F1", "BETAS"]
+dumpthese = [
+    "bic",
+    "sil",
+    "cal",
+    "all_clus_labels",
+    "auc",
+    "f1",
+    "betas",
+    "n_per_classification",
+]
 for d in dumpthese:
     if current_set >= len(sets):
         fold_string = "ctrl_fold" + str(current_fold) + ".pkl"

@@ -5,42 +5,50 @@ import os
 
 from looco_loop import loocv_loop
 
-def clusmetwrapper(design):
 
-    X = design["X"]
+class cluster:
 
-    n_samples = X.shape[0]
-    n_features = X.shape[1]
+    def __init__(self, X, n_ks, cv_assignment, mainfold, subfold, covariance):
 
-    all_clus_labels = np.full([n_samples, design["n_ks"], n_samples], np.nan)
-    bic = np.full([n_samples, design["n_ks"]], np.nan)
-    sil = np.full([n_samples, design["n_ks"]], np.nan)
-    cal = np.full([n_samples, design["n_ks"]], np.nan)
-    auc = np.full([n_samples, design["n_ks"]], np.nan)
-    f1 = np.full([n_samples, design["n_ks"]], np.nan)
-    betas = np.full([n_samples, design["n_ks"],  n_features, design["n_ks"] + 2], np.nan)
-    n_per_classification = np.full([n_samples, design["n_ks"], design["n_ks"] + 2], np.nan)
+        self.data = X
+        self.nk = n_ks
+        self.cv_assignment = cv_assignment
+        self.mainfold = mainfold
+        self.subfold = subfold
+        self.covariance = covariance
 
-    cv_assignment = design["cv_assignment"]
-    train_index_sub = np.where(
-        (cv_assignment[:, design["mainfold"]] != design["subfold"])
-        & (~np.isnan(cv_assignment[:, design["mainfold"]]))
-    )[0]
-    x2 = X[train_index_sub, :]
+    def run(self):
 
-    for nclus in range(design["n_ks"]):
-        print(nclus+2,'clusters')
-        (
-            tmp_all_clus_labels,
-            bic[train_index_sub, nclus],
-            sil[train_index_sub, nclus],
-            cal[train_index_sub, nclus],
-            auc[train_index_sub, nclus],
-            f1[train_index_sub, nclus],
-            betas[train_index_sub, nclus, :, :nclus + 2],
-            n_per_classification[train_index_sub,nclus,:nclus+2]
-        ) = loocv_loop(x2, design["covariance"], nclus)
-        for t in range(len(train_index_sub)):
-            all_clus_labels[train_index_sub[t],nclus,train_index_sub]=tmp_all_clus_labels[t,:]
+        self.n_samples = self.data.shape[0]
+        self.n_features = self.data.shape[1]
 
-    return all_clus_labels, bic, sil, cal, auc, f1, betas,n_per_classification
+        self.all_clus_labels = np.full([self.n_samples, self.nk, self.n_samples], np.nan)
+        self.bic = np.full([self.n_samples, self.nk], np.nan)
+        self.sil = np.full([self.n_samples, self.nk], np.nan)
+        self.cal = np.full([self.n_samples, self.nk], np.nan)
+        self.auc = np.full([self.n_samples, self.nk], np.nan)
+        self.f1 = np.full([self.n_samples, self.nk], np.nan)
+        self.betas = np.full([self.n_samples, self.nk,  self.n_features, self.nk + 2], np.nan)
+        self.n_per_classification = np.full([self.n_samples, self.nk, self.nk + 2], np.nan)
+
+        self.train_index_sub = np.where(
+            (self.cv_assignment[:, self.mainfold] != self.subfold)
+            & (~np.isnan(self.cv_assignment[:, self.mainfold]))
+        )[0]
+        x2 = self.data[self.train_index_sub, :]
+
+        for nclus in range(self.nk):
+            print(nclus+2,'clusters')
+            (
+                tmp_all_clus_labels,
+                self.bic[self.train_index_sub, nclus],
+                self.sil[self.train_index_sub, nclus],
+                self.cal[self.train_index_sub, nclus],
+                self.auc[self.train_index_sub, nclus],
+                self.f1[self.train_index_sub, nclus],
+                self.betas[self.train_index_sub, nclus, :, :nclus + 2],
+                self.n_per_classification[self.train_index_sub,nclus,:nclus+2]
+            ) = loocv_loop(x2, self.covariance, nclus)
+            for t in range(len(self.train_index_sub)):
+                self.all_clus_labels[self.train_index_sub[t],nclus,self.train_index_sub]=tmp_all_clus_labels[t,:]
+

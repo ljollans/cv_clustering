@@ -5,12 +5,12 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from itertools import permutations
 
-from clusmetwrapper import clusmetwrapper
+from clusmetwrapper import cluster
 from looco_loop import loocv_loop
 from loocv_assigmatcher_nov import get_co_cluster_count, get_consensus_labels, get_maxmatches, get_final_assignment, \
     match_assignments_to_final_assignments
 import matplotlib.pyplot as plt
-from utils import colorscatter, max_min_val_check
+from utils import colorscatter, max_min_val_check, create_ref_data
 import scipy
 import nimfa
 
@@ -55,16 +55,15 @@ elif do_test==2:
     ############################################################
     # second basic test - clusters retrieved
     print('test: match for clusters retrieved with LOOCV but no k-fold CV')
-    design = {
-        "X": X,
-        "cv_assignment": np.zeros(shape=[150, 1]),
-        "mainfold": 0,
-        "subfold": 1,
-        "covariance": 'full',
-        "n_ks": 5,
-    }
-    all_clus_labels, bic, sil, cal, auc, f1, betas, n_per_classification = clusmetwrapper(design)
-    print(np.mean(bic,axis=0))
+
+    mod = cluster(X,5,np.zeros(shape=[150, 1]),0,1,'full')
+    mod.run()
+
+
+    print(bic)
+
+elif do_test==3:
+    ref_data = create_ref_data(X)
 
 
 

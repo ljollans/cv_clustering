@@ -1,10 +1,14 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import sklearn
 from scipy import sparse as sp
 import copy
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
+import pandas as pd
+import numpy as np
+from sklearn.decomposition import PCA
 
 
 def identify_set_and_fold(current_proc, n_cv_folds):
@@ -220,3 +224,58 @@ def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
             # don't use += as contingency is integer
             contingency = contingency + eps
     return contingency
+
+
+def create_ref_data(x, random_state=None):
+    '''
+    A function that returns a reference data set without any cluster structure.
+    This function was translated from the "M3C" R package from Christopher John and David Watson (John et al., SciRep, 2020).
+    The approach bases on Tibshirani et al. (2001) and preserves covariance structure of the data via PCA.
+
+    Args:
+        x: your data, can be a pandas dataframe or a matrix. rows should be the samples, columns the features.
+
+    Returns:
+        ref_data: reference data set for your data, same type (dataframe or matrix)
+    '''
+
+    # if dataframe is input, convert to matrix
+    in_df = 0
+    if isinstance(x, pd.core.frame.DataFrame):
+        df_names = x.columns
+        in_df = 1
+        x = x.values
+
+    # rows and columns
+    r = x.shape[0]
+    c = x.shape[1]
+
+    # perform PCA
+    pca = PCA()
+    pca.fit(x)
+
+    # rotated data
+    x_t = pca.fit_transform(x.T)
+
+    # function to get PCA covariance matrix and SDs
+    def colSdColMeans(x):
+        n = x.shape[0]
+        colVar = np.mean(x * x, axis=0) - (np.mean(x, axis=0) ** 2)
+        return np.sqrt(colVar * n / (n - 1))
+
+    # get SDs from colSdColMeans function
+    sds = colSdColMeans(x_t)
+
+    # simulated data based on normal distributions: mean 0, sd from sds
+    if random_state:
+        np.random.seed(random_state)
+    sim_data = np.random.normal(0, sds, (c, c))
+
+    # create reference dataset
+    ref_data = (np.matmul(sim_data, pca.components_) + pca.mean_).T
+
+    # possibly back to dataframe
+    if in_df:
+        ref_data = pd.DataFrame(ref_data, columns=df_names)
+
+    return ref_data
