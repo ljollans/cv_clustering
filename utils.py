@@ -8,7 +8,7 @@ from scipy import sparse as sp
 import scipy
 import copy
 
-from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score, silhouette_score
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
@@ -115,13 +115,17 @@ def get_pac(con_mat):
 
     p = con_mat.flatten()
 
-    xs, ys = ecdf(p)
+    xs, ys, idx = ecdf(p)
     select_vals = np.where(np.logical_and(xs >= x1, xs <= x2))
     x1_x2_range = ys[select_vals[0]]
 
-    x1_val = x1_x2_range[0]
-    x2_val = x1_x2_range[-1]
-    pac = x2_val - x1_val
+    if len(x1_x2_range)==0:
+        pac = 0
+        print('pac set to 0. Total n =',str(len(ys)), '. n <', str(x1),'=', str(len(np.where(xs<x1)[0])),';  n >',str(x2),'=', str(len(np.where(xs>x2)[0])))
+    else:
+        x1_val = x1_x2_range[0]
+        x2_val = x1_x2_range[-1]
+        pac = x2_val - x1_val
 
     return pac
 
@@ -162,6 +166,11 @@ def rand_score_withnans(a1,a2):
     a2 = np.delete(a2, np.where(np.isnan(a1))[0])
     a1 = np.delete(a1, np.where(np.isnan(a1))[0])
     return adjusted_rand_score(a1,a2)
+
+def silhouette_score_withnans(X,a):
+    X = np.delete(X, np.where(np.isnan(a))[0], axis=0)
+    a = np.delete(a, np.where(np.isnan(a))[0])
+    return silhouette_score(X,a)
 
 def mutual_info_score_withnans(a1,a2):
     a1 = np.delete(a1, np.where(np.isnan(a2))[0])

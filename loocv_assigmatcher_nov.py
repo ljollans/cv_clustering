@@ -487,7 +487,7 @@ def infer_iteration_clusmatch(consensus_labels, A):
     return assignments
 
 
-def sort_into_clusters_argmax_ecdf(data, betas):
+def sort_into_clusters_argmax_ecdf(data, betas, mincdf=.8):
     Y = data.dot(betas)
     all_ys = np.full([Y.shape[0], Y.shape[1]], np.nan)
     for nclus in range(Y.shape[1]):
@@ -496,7 +496,11 @@ def sort_into_clusters_argmax_ecdf(data, betas):
     argmax_assig = np.full(Y.shape[0], np.nan)
     for ppt in range(Y.shape[0]):
         crit = all_ys[ppt, :]
-        if np.max(crit) > .8:
+        if np.max(crit) > mincdf:
             argmax_assig[ppt] = np.where(crit == np.max(crit))[0][0]
     return argmax_assig, all_ys, Y
+
+
+def pull_from_mod(mod):
+    return mod.pac, mod.rand_all, mod.coph, mod.beta_aggregate, mod.beta_pre_aggregate, mod.cluster_ensembles_labels
 

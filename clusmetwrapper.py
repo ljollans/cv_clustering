@@ -14,8 +14,8 @@ from loocv_assigmatcher_nov import (
     n_clus_retrieval_grid,
     get_co_cluster_count,
     get_consensus_labels,
-    infer_iteration_clusmatch)
-from utils import coph_cor, rand_score_withnans
+    infer_iteration_clusmatch, collect_betas_for_corresponding_clus, sort_into_clusters_argmax_ecdf)
+from utils import coph_cor, rand_score_withnans, get_gradient_change, silhouette_score_withnans, get_pac
 import sys
 
 sys.path.append(
@@ -54,6 +54,11 @@ class cluster:
 
         self.train_index_sub = np.where(
             (self.cv_assignment[:, self.mainfold] != self.subfold)
+            & (~np.isnan(self.cv_assignment[:, self.mainfold]))
+        )[0]
+
+        self.test_index_sub = np.where(
+            (self.cv_assignment[:, self.mainfold] == self.subfold)
             & (~np.isnan(self.cv_assignment[:, self.mainfold]))
         )[0]
 
@@ -115,6 +120,8 @@ class cluster:
             plt.xlabel("k")
         plt.show()
 
+
+
     def aggregate_loocv(self):
         A = self.all_clus_labels
         A = A[self.train_index_sub, :, :]
@@ -165,16 +172,26 @@ class cluster:
         self.consensus_matrix = np.full(
             [self.nk, len(self.train_index_sub), len(self.train_index_sub)], np.nan
         )
-        self.rand_all = np.full([self.nk, len(self.train_index_sub), len(self.train_index_sub)], np.nan)
-
         A = self.all_clus_labels[self.train_index_sub, :, :]
         A = A[:, :, self.train_index_sub]
         for nclus in range(self.nk):
             self.consensus_matrix[nclus, :, :] = get_co_cluster_count(A[:, nclus, :])
+
+
+    def calc_rand_all(self):
+        self.rand_all = np.full([self.nk, len(self.train_index_sub), len(self.train_index_sub)], np.nan)
+        A = self.all_clus_labels[self.train_index_sub, :, :]
+        A = A[:, :, self.train_index_sub]
+        for nclus in range(self.nk):
             for a1 in range(A.shape[0]):
                 for a2 in range(A.shape[0]):
                     if a2 > a1:
                         self.rand_all[nclus, a1, a2] = rand_score_withnans(A[a1, nclus,:], A[a2,nclus, :])
+
+    def get_pac(self):
+        self.pac = np.full([self.nk], np.nan)
+        for nclus in range(self.nk):
+            self.pac[nclus] = get_pac(self.consensus_matrix[nclus, :, :])
 
     def cophenetic_correlation(self):
         self.coph = np.full([self.nk], np.nan)
@@ -235,12 +252,47 @@ class cluster:
 
     def cluster_ensembles_match_betas(self):
         self.iteration_assignments = []
+        self.beta_aggregate = []
+        self.beta_pre_aggregate = []
         A=self.all_clus_labels[self.train_index_sub,:,:]
         A=A[:,:,self.train_index_sub]
         for nclus in range(self.nk):
-            a = infer_iteration_clusmatch(self.cluster_ensembles_labels[:,nclus],A[:,nclus,:])
-            self.iteration_assignments.append(a)
+            assignments = infer_iteration_clusmatch(self.cluster_ensembles_labels[:,nclus],A[:,nclus,:])
+            self.iteration_assignments.append(assignments)
 
-            bb = self.betas[self.train_index_sub, :, :, :]
-            bb = bb[:, nclus, :, :]
-            bb = bb[:, :nclus+2, :]
+            betas = self.betas[self.train_index_sub, nclus, :nclus + 2, :]
+            aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
+            self.beta_aggregate.append(aggregated_betas)
+            self.beta_pre_aggregate.append(new_betas_array)
+
+    def best_k_plot(self):
+        sil2 = [sklearn.metrics.silhouette_score(self.data[self.train_index_sub,:], self.cluster_ensembles_labels[:,i]) for i in range(self.nk)]
+        sil3=np.full(self.nk,np.nan)
+        sil4=np.full(self.nk,np.nan)
+        for k in range(self.nk):
+            argmax_assig, all_ys, Y = sort_into_clusters_argmax_ecdf(self.data[self.train_index_sub], self.beta_aggregate[k], 1-1/(k+2))
+            sil3[k]=silhouette_score_withnans(self.data[self.train_index_sub,:], argmax_assig)
+            argmax_assig, all_ys, Y = sort_into_clusters_argmax_ecdf(self.data[self.test_index_sub], self.beta_aggregate[k], 1-1/(k+2))
+            sil4[k] = silhouette_score_withnans(self.data[self.test_index_sub, :], argmax_assig)
+
+        fig=plt.figure()
+        plt.subplot(2,3,1); plt.plot(np.nanmean(self.bic,axis=0)); plt.title('Average BIC for LOOCV iterations')
+        plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2); plt.xlabel("k")
+
+        plt.subplot(2,3,2); plt.plot(np.nanmean(self.sil,axis=0)); plt.plot(sil2);
+        plt.plot(sil3); plt.plot(sil4);
+        plt.title('Silhouette score'); plt.legend(['mean for i LOOCV','from consensus labels','from beta argmax train','from beta argmax test'])
+        plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2); plt.xlabel("k")
+
+        plt.subplot(2,3,3); plt.plot( np.nanmean(np.nanmean(self.rand_all,axis=2),axis=1)); plt.title('Average rand score btw LOOCV iterations')
+        plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2); plt.xlabel("k")
+
+        plt.subplot(2,3,4); plt.plot(self.pac); plt.plot(get_gradient_change(self.pac));
+        plt.title('Proportion ambiguous clustering'); plt.legend(['pac','pac gradient change'])
+        plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2); plt.xlabel("k")
+
+        plt.subplot(2,3,5); plt.plot(self.coph); plt.title('Cophenetic correlation');
+        plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2); plt.xlabel("k")
+
+        plt.show()
+

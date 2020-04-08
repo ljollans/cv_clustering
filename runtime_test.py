@@ -8,12 +8,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from loocv_assigmatcher_nov import collect_betas_for_corresponding_clus, sort_into_clusters_argmax_ecdf
-from utils import rand_score_withnans, ecdf
+from utils import rand_score_withnans, ecdf, silhouette_score_withnans, get_gradient_change
 
 seconds1 = time.time()
 
 input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+
+sets = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_Scs_s', 'Tct_tc_s',
+         'Scs_sc_s', 'Tct_Scs_tc_sc_s']
 
 mainfold = 0
 subfold = 0
@@ -21,27 +24,49 @@ n_cv_folds = 4
 n_ks = 8
 current_set=8
 
-pkl_filename = 'tst.pkl'
-with open(pkl_filename,"rb") as file:
-    mod = pickle.load(file)
-mod.plot_loocv()
+# cv import
+with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
+    reader = csv.reader(f, delimiter=",")
+    cv_assignment = np.array(list(reader)).astype(float)
+
+# data import
+if current_set >= len(sets):
+    data_path = input_files_dir + "MDD__" + sets[current_set - len(sets)] + "_ctrl.csv"
+else:
+    data_path = input_files_dir + "MDD__" + sets[current_set] + ".csv"
+with open(data_path, "r") as f:
+    reader = csv.reader(f, delimiter=",")
+    data = np.array(list(reader)).astype(float)
+
+# init mod
+mainfold = 0
+subfold = 0
+mod = cluster(data, n_ks, cv_assignment, mainfold, subfold, "full")
+
+#pull in results
+savedir = ('/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_' + sets[current_set])
+ctr = 0
+fold = (mainfold * 4) + subfold
+saveasthese = ["bic","sil","cal","all_clus_labels","auc","f1","betas"]
+loadasthese = ["BIC","SIL","CAL","allcluslabels","AUC","F1","BETAS"]
+for d in range(len(saveasthese)):
+    if ctr == 1:
+        fold_string = "ctrl_fold" + str(fold) + ".pkl"
+    else:
+        fold_string = "_fold" + str(fold) + ".pkl"
+    pkl_filename = savedir + loadasthese[d] + fold_string
+    with open(pkl_filename, "rb") as file:
+        tmp = pickle.load(file)
+    exec(saveasthese[d] + " = tmp")
+
+mod.pull_in_saves(bic, sil, cal, all_clus_labels, auc, f1, betas)
+
+mod.aggregate_loocv()
+mod.calc_consensus_matrix()
+mod.get_pac()
+mod.calc_rand_all()
+mod.cluster_ensembles()
+mod.cluster_ensembles_match_betas()
 mod.cophenetic_correlation()
 
-# are assignments based on betas in line with consensus_labels
-data = mod.data[mod.train_index_sub,:]
-for k in range(mod.nk):
-    betas = mod.betas[mod.train_index_sub,k,:k+2,:]
-    assignments = mod.iteration_assignments[k]
-
-    aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
-
-    argmax_assig, all_ys, Y = sort_into_clusters_argmax_ecdf(data, aggregated_betas)
-
-    argmax_assig = np.full(Y.shape[0],np.nan)
-    for ppt in range(Y.shape[0]):
-        crit=all_ys[ppt,:]
-        if np.max(crit)>.8:
-            argmax_assig[ppt]=np.where(crit==np.max(crit))[0][0]
-
-    print(rand_score_withnans(argmax_assig, mod.cluster_ensembles_labels[:,k]))
-
+mod.best_k_plot()
