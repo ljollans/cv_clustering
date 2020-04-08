@@ -7,7 +7,7 @@ import sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from loocv_assigmatcher_nov import collect_betas_for_corresponding_clus
+from loocv_assigmatcher_nov import collect_betas_for_corresponding_clus, sort_into_clusters_argmax_ecdf
 from utils import rand_score_withnans, ecdf
 
 seconds1 = time.time()
@@ -35,12 +35,7 @@ for k in range(mod.nk):
 
     aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
 
-    Y = data.dot(aggregated_betas)
-
-    all_ys = np.full([Y.shape[0], Y.shape[1]],np.nan)
-    for nclus in range(k+2):
-        xs,ys, idx=ecdf(Y[:,nclus])
-        all_ys[idx,nclus]=ys
+    argmax_assig, all_ys, Y = sort_into_clusters_argmax_ecdf(data, aggregated_betas)
 
     argmax_assig = np.full(Y.shape[0],np.nan)
     for ppt in range(Y.shape[0]):

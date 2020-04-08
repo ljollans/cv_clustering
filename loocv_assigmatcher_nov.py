@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import sparse as sp
 
-from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check, contingency_matrix
+from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check, \
+    contingency_matrix, ecdf
 
 
 def return_train_data(X, mainfold, subfold):
@@ -485,4 +486,17 @@ def infer_iteration_clusmatch(consensus_labels, A):
         assignments[i,:]=maxmatch_from_contingency_matrix(contingency_matrix(a,b), 1)
     return assignments
 
+
+def sort_into_clusters_argmax_ecdf(data, betas):
+    Y = data.dot(betas)
+    all_ys = np.full([Y.shape[0], Y.shape[1]], np.nan)
+    for nclus in range(Y.shape[1]):
+        xs, ys, idx = ecdf(Y[:, nclus])
+        all_ys[idx, nclus] = ys
+    argmax_assig = np.full(Y.shape[0], np.nan)
+    for ppt in range(Y.shape[0]):
+        crit = all_ys[ppt, :]
+        if np.max(crit) > .8:
+            argmax_assig[ppt] = np.where(crit == np.max(crit))[0][0]
+    return argmax_assig, all_ys, Y
 
