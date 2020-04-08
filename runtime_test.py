@@ -28,42 +28,25 @@ mod.plot_loocv()
 mod.cophenetic_correlation()
 
 # are assignments based on betas in line with consensus_labels
-k=4
-
 data = mod.data[mod.train_index_sub,:]
-betas = mod.betas[mod.train_index_sub,k,:k+2,:]
-assignments = mod.iteration_assignments[k]
+for k in range(mod.nk):
+    betas = mod.betas[mod.train_index_sub,k,:k+2,:]
+    assignments = mod.iteration_assignments[k]
 
-aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
+    aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
 
-Y = data.dot(aggregated_betas)
+    Y = data.dot(aggregated_betas)
 
-fig=plt.figure()
-for nclus in range(k+2):
-    plt.subplot(3,2,nclus+1)
-    sns.distplot(Y[:,nclus])
-plt.show()
+    all_ys = np.full([Y.shape[0], Y.shape[1]],np.nan)
+    for nclus in range(k+2):
+        xs,ys, idx=ecdf(Y[:,nclus])
+        all_ys[idx,nclus]=ys
 
-fig=plt.figure()
-for nclus in range(k+2):
-    xs = (np.ones(Y.shape[0]) * nclus) + np.random.rand(Y.shape[0])
-    plt.scatter(xs,Y[:,nclus])
-plt.show()
+    argmax_assig = np.full(Y.shape[0],np.nan)
+    for ppt in range(Y.shape[0]):
+        crit=all_ys[ppt,:]
+        if np.max(crit)>.8:
+            argmax_assig[ppt]=np.where(crit==np.max(crit))[0][0]
 
-all_ys = np.full([Y.shape[0], Y.shape[1]],np.nan)
-for nclus in range(k+2):
-    xs,ys, idx=ecdf(Y[:,nclus])
-    all_ys[idx,nclus]=ys
+    print(rand_score_withnans(argmax_assig, mod.cluster_ensembles_labels[:,k]))
 
-
-Yt=Y[:25,:]; all_yst=all_ys[:25,:]
-fig=plt.figure()
-plt.subplot(2,1,1)
-for nclus in range(k+2):
-    plt.scatter(np.arange(Yt.shape[0]),Yt[:,nclus])
-plt.subplot(2,1,2)
-for nclus in range(k+2):
-    plt.scatter(np.arange(Yt.shape[0]),all_yst[:,nclus])
-plt.show()
-
-plt.plot(np.max(all_ys,axis=1))
