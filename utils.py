@@ -103,9 +103,10 @@ def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
 
 
 def ecdf(x):
-    xs = np.sort(x)
+    idx = np.argsort(x)
+    xs = x[idx]
     ys = np.arange(1, len(xs) + 1) / float(len(xs))
-    return xs, ys
+    return xs, ys, idx
 
 
 def get_pac(con_mat):

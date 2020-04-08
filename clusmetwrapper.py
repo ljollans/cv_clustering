@@ -46,7 +46,7 @@ class cluster:
         self.auc = np.full([self.n_samples, self.nk], np.nan)
         self.f1 = np.full([self.n_samples, self.nk], np.nan)
         self.betas = np.full(
-            [self.n_samples, self.nk, self.n_features, self.nk + 2], np.nan
+            [self.n_samples, self.nk, self.nk + 2,self.n_features, ], np.nan
         )
         self.n_per_classification = np.full(
             [self.n_samples, self.nk, self.nk + 2], np.nan
