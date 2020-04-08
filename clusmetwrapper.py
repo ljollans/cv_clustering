@@ -14,7 +14,7 @@ from loocv_assigmatcher_nov import (
     n_clus_retrieval_grid,
     get_co_cluster_count,
     get_consensus_labels,
-)
+    infer_iteration_clusmatch)
 from utils import coph_cor, rand_score_withnans
 import sys
 
@@ -232,3 +232,15 @@ class cluster:
                 self.data[self.train_index_sub, :],
                 self.consensus_labels[:, nclus],
             )
+
+    def cluster_ensembles_match_betas(self):
+        self.iteration_assignments = []
+        A=self.all_clus_labels[self.train_index_sub,:,:]
+        A=A[:,:,self.train_index_sub]
+        for nclus in range(self.nk):
+            a = infer_iteration_clusmatch(self.cluster_ensembles_labels[:,nclus],A[:,nclus,:])
+            self.iteration_assignments.append(a)
+
+            bb = self.betas[self.train_index_sub, :, :, :]
+            bb = bb[:, nclus, :, :]
+            bb = bb[:, :nclus+2, :]

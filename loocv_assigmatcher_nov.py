@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import csv
 from scipy import sparse as sp
 
-from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check
+from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check, contingency_matrix
 
 
 def return_train_data(X, mainfold, subfold):
@@ -401,22 +401,9 @@ def rand_score_comparison(A, consensus_label):
     return rand_all, rand_aftermatch
 
 
-def collect_betas_for_corresponding_clus(corresponding_cluster, set, mainfold, subfold, k, sets):
+def collect_betas_for_corresponding_clus(corresponding_cluster, betas):
     n_iterations, n_groups = corresponding_cluster.shape
-
-    savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'
-    cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
-    with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
-        reader = csv.reader(f, delimiter=",")
-        cv_assignment = np.array(list(reader)).astype(float)
-
-    pkl_filename = (savedir + sets[set] + 'BETAS_fold' + str((mainfold * 4) + subfold) + '.pkl')
-    with open(pkl_filename, "rb") as file:
-        BETAS = pickle.load(file)
-
-    trainset = select_trainset(cv_assignment, mainfold, subfold)
-    BETAS = BETAS[trainset, k - 2, :, :]  # i x k x n_features
-    aggregated_betas = np.full([BETAS.shape[2], n_groups], np.nan)
+    aggregated_betas = np.full([betas.shape[2], n_groups], np.nan)
 
     new_betas_list = []
     new_betas_array = []
@@ -426,13 +413,14 @@ def collect_betas_for_corresponding_clus(corresponding_cluster, set, mainfold, s
         for i in range(n_iterations):
             crit = corresponding_cluster[i, groups]
             if np.isfinite(crit):
-                new_betas_list[groups].append(BETAS[i, crit.astype(int), :])
-        new_betas_array[groups] = np.full([BETAS.shape[2], len(new_betas_list[groups])], np.nan)
+                new_betas_list[groups].append(betas[i, crit.astype(int), :])
+        new_betas_array[groups] = np.full([betas.shape[2], len(new_betas_list[groups])], np.nan)
         for i in range(len(new_betas_list[groups])):
             new_betas_array[groups][:, i] = new_betas_list[groups][i]
         aggregated_betas[:, groups] = np.median(new_betas_array[groups], axis=1)
 
     return aggregated_betas, new_betas_array
+
 
 def get_consensus_labels(A,k, verbose):
 
@@ -485,5 +473,16 @@ def get_consensus_labels(A,k, verbose):
 
     return consensus_label
 
+
+def infer_iteration_clusmatch(consensus_labels, A):
+    nclus=len(np.unique(consensus_labels))
+    ni=A.shape[0]
+    assignments = np.full([ni,nclus],np.nan)
+    for i in range(ni):
+        a=consensus_labels
+        b=A[i,:]
+        a=np.delete(a,np.where(np.isnan(b))[0]); b=np.delete(b,np.where(np.isnan(b))[0])
+        assignments[i,:]=maxmatch_from_contingency_matrix(contingency_matrix(a,b), 1)
+    return assignments
 
 
