@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import sklearn
-
+from sklearn.cluster import AgglomerativeClustering
 from looco_loop import loocv_loop
 from loocv_assigmatcher_nov import (
     n_clus_retrieval_chk,
@@ -250,6 +250,32 @@ class cluster:
                 self.consensus_labels[:, nclus],
             )
 
+    def hierarchical_consensus(self):
+        self.agglom_labels = np.full([len(self.train_index_sub),self.nk],np.nan)
+        self.randall_agglom = np.full([self.nk, len(self.train_index_sub)], np.nan)
+        self.silhouette_agglom = np.full([self.nk], np.nan)
+
+        A=self.all_clus_labels[self.train_index_sub,:,:]
+        A=A[:,:,self.train_index_sub]
+        for nclus in range(self.nk):
+            aa=A[:,nclus,:].T
+            np.fill_diagonal(aa, -1)
+            clustering = AgglomerativeClustering(n_clusters=nclus+2).fit(aa)
+            self.agglom_labels[:,nclus]=clustering.labels_
+
+            self.randall_agglom[nclus, :] = [
+                rand_score_withnans(
+                    self.agglom_labels[:, nclus], aa[:,i]
+                )
+                for i in range(len(self.train_index_sub))
+            ]
+
+            self.silhouette_agglom[nclus] = sklearn.metrics.silhouette_score(
+                self.data[self.train_index_sub, :],
+                self.agglom_labels[:, nclus],
+            )
+
+
     def cluster_ensembles_match_betas(self):
         self.iteration_assignments = []
         self.beta_aggregate = []
@@ -266,6 +292,10 @@ class cluster:
             self.beta_pre_aggregate.append(new_betas_array)
 
     def best_k_plot(self):
+        self.test_index_sub = np.where(
+            (self.cv_assignment[:, self.mainfold] == self.subfold)
+            & (~np.isnan(self.cv_assignment[:, self.mainfold]))
+        )[0]
         sil2 = [sklearn.metrics.silhouette_score(self.data[self.train_index_sub,:], self.cluster_ensembles_labels[:,i]) for i in range(self.nk)]
         sil3=np.full(self.nk,np.nan)
         sil4=np.full(self.nk,np.nan)
