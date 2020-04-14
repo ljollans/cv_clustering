@@ -504,3 +504,5 @@ def sort_into_clusters_argmax_ecdf(data, betas, mincdf=.8):
 def pull_from_mod(mod):
     return mod.pac, mod.rand_all, mod.coph, mod.beta_aggregate, mod.beta_pre_aggregate, mod.cluster_ensembles_labels
 
+def pull_from_mod2(mod):
+    return mod.coph, mod.beta_aggregate, mod.beta_pre_aggregate, mod.cluster_ensembles_labels

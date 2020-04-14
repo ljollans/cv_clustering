@@ -46,7 +46,7 @@ class cluster:
         self.auc = np.full([self.n_samples, self.nk], np.nan)
         self.f1 = np.full([self.n_samples, self.nk], np.nan)
         self.betas = np.full(
-            [self.n_samples, self.nk, self.nk + 2,self.n_features, ], np.nan
+            [self.n_samples, self.nk, self.n_features, self.nk + 2 ], np.nan
         )
         self.n_per_classification = np.full(
             [self.n_samples, self.nk, self.nk + 2], np.nan
@@ -75,7 +75,7 @@ class cluster:
                 self.cal[self.train_index_sub, nclus],
                 self.auc[self.train_index_sub, nclus],
                 self.f1[self.train_index_sub, nclus],
-                self.betas[self.train_index_sub, nclus, :, : nclus + 2],
+                self.betas[self.train_index_sub, nclus, :, :nclus + 2],
                 self.n_per_classification[self.train_index_sub, nclus, : nclus + 2],
             ) = loocv_loop(x2, self.covariance, nclus)
             for t in range(len(self.train_index_sub)):

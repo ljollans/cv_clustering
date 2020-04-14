@@ -1,64 +1,74 @@
-import matplotlib.pyplot as plt
-import matplotlib
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn import datasets
-from sklearn.decomposition import PCA
+import csv
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+import sys
+import time
+import pickle
+import sklearn
 
-from looco_loop import loocv_loop
-from utils import colorscatter
-import scipy
-import nimfa
+from clusmetwrapper import cluster
+from utils import identify_set_and_fold, rand_score_withnans
+import sys
 
-iris = datasets.load_iris()
-X = iris.data  # we only take the first two features.
-Y = iris.target
+sys.path.append(
+    "/Users/lee_jollans/PycharmProjects/Cluster_Ensembles/src/Cluster_Ensembles"
+)
+import Cluster_Ensembles as CE
 
-ss=np.linspace(0,len(Y)-1,len(Y))
-np.random.shuffle(ss)
-X=X[ss.astype(int),:]
-Y=Y[ss.astype(int)]
+seconds1 = time.time()
 
-scaler = MinMaxScaler()
-X = scaler.fit_transform(X)
+input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
+cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
+save_dir = "/Users/lee_jollans/Projects/clustering_pilot/ALL/"
+save_str = "ALL_"
 
-def snmf_compute(X, rank_range, n_run):
-    snmf = nimfa.Snmf ( X,
-                        seed='random',
-                        max_iter=1000,
-                        track_factor=True,
-                        track_error=True,
-                        version='r' )  # 'r' regularizes coefficient matrix H
+# presets
+sets = [
+    "Tc",
+    "Sc",
+    "TSc",
+    "Tc_tc",
+    "Sc_sc",
+    "TSc_tsc",
+    "Tct_s",
+    "Scs_s",
+    "Tct_Scs_s",
+    "Tct_tc_s",
+    "Scs_sc_s",
+    "Tct_Scs_tc_sc_s",
+]
 
-    est = snmf.estimate_rank ( rank_range, n_run )
+n_cv_folds = 4
+n_ks = 8
+with open((cv_assignment_dir + "CVassig740.csv"), "r") as f:
+    reader = csv.reader(f, delimiter=",")
+    cv_assignment = np.array(list(reader)).astype(float)
 
-    return est
+# settings
+current_proc = 0
+current_set, current_fold = identify_set_and_fold(current_proc, n_cv_folds)
+mainfolds_subfolds = [
+    np.repeat(np.arange(n_cv_folds), n_cv_folds),
+    np.tile(np.arange(n_cv_folds), n_cv_folds),
+]
 
+# data import
+data_path = input_files_dir + "ALL_" + sets[current_set] + ".csv"
 
-# initializations and k-fold splitting of data
-rank_range = range ( 2, 5 )
-runs = 10
+with open(data_path, "r") as f:
+    reader = csv.reader(f, delimiter=",")
+    data = np.array(list(reader)).astype(float)
 
-res = snmf_compute(X.T, rank_range, runs)
-#plt.imshow(X)
-#plt.colorbar()
-#plt.show()
-print(res.coef())
+mod = cluster(
+    data,
+    n_ks,
+    cv_assignment,
+    mainfolds_subfolds[0][current_fold].astype(int),
+    mainfolds_subfolds[1][current_fold].astype(int),
+    "full",
+)
 
-#(
-#    looco_all_clus_labels,
-#    looco_bic,
-#    looco_sil,
-#    looco_cal,
-#    looco_auc,
-#    looco_f1,
-#    looco_betas,
-#) = loocv_loop(X, "full", 1)
+mod.run()
 
-#fig = plt.figure(figsize=[15, 5])
-#colorscatter(X, Y, np.ones(shape=X.shape[0]),plt.subplot(1, 2, 1))
-#all_assigs_mode=[scipy.stats.mode(looco_all_clus_labels[:,p])[0][0].astype(int)+1 for p in range(looco_all_clus_labels.shape[1])]
-#print(all_assigs_mode)
-#colorscatter(X, all_assigs_mode, np.ones(shape=X.shape[0]),plt.subplot(1, 2, 2))
-#plt.show()
+pkl_filename = save_dir + save_str + sets[current_set] + '_mod_' + str(current_fold)
+with open(pkl_filename,"wb") as file:
+    pickle.dump(mod, file)

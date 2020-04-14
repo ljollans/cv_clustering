@@ -16,7 +16,7 @@ def loocv_loop(x_all, covariance, k):
     loocv_betas = np.full([n_samples, n_features, k + 2], np.nan)
     loocv_n_across_cv_folds=np.full([n_samples,k+2],np.nan)
 
-    for loocv in range(5):#n_samples):
+    for loocv in range(n_samples):
         print('loocv i=',loocv)
         x = np.delete(x_all, loocv, axis=0)
         save_vector = np.delete(np.arange(n_samples),loocv)
