@@ -408,13 +408,6 @@ def extract_vals(filedir, sets, topull,nk,ncv,withctr,save):
             for mf in range(ncv):
                 for sf in range(ncv):
                     for k in range(nk):
-                        tmp_df = pd.DataFrame(
-                            {topull: [all_tmp[k, s,  mf, sf]],
-                             'set': sets[s],
-                             'mf': mf,
-                             'sf': sf,
-                             'k': int(k) + 2},
-                            columns=[topull, 'set',  'mf', 'sf', 'k'])
-                        df = df.append(tmp_df)
+                        _
 
     return all_tmp, df

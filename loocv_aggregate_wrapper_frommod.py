@@ -18,7 +18,7 @@ with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
     reader = csv.reader(f, delimiter=",")
     cv_assignment = np.array(list(reader)).astype(float)
 
-for current_set in [1]:
+for current_set in [6,7,8,9,10,11]:
     print(sets[current_set])
     savedir = (path2use_1 + sets[current_set])
 
