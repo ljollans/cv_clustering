@@ -326,3 +326,95 @@ class cluster:
 
         plt.show()
 
+
+def extract_vals(filedir, sets, topull,nk,ncv,withctr,save):
+
+    if withctr==1:
+        all_tmp = np.full([nk, len(sets), 2, ncv, ncv], np.nan)
+    else:
+        all_tmp = np.full([nk, len(sets), ncv, ncv], np.nan)
+
+    for s in range(len(sets)):
+        if withctr == 1:
+            for ctr in range(2):
+                if ctr == 0:
+                    pkl_filename = filedir + sets[s] + '__' + topull + '.pkl'
+                else:
+                    pkl_filename = filedir + sets[s] + '_ctrl__' + topull + '.pkl'
+
+                with open(pkl_filename, "rb") as file:
+                    tmp = pickle.load(file)
+                fold = -1
+                for mf in range(ncv):
+                    for sf in range(ncv):
+                        fold += 1
+                        if tmp[fold].shape[0]==nk:
+                            if len(tmp[fold].shape)==1:
+                                all_tmp[:,s,ctr,mf,sf]=tmp[fold]
+                            elif len(tmp[fold].shape)==2:
+                                all_tmp[:, s, ctr, mf, sf] = [np.nanmean(tmp[fold][i,:]) for i in range(nk)]
+                            elif len(tmp[fold].shape)==3:
+                                all_tmp[:, s, ctr, mf, sf] = [np.nanmean(tmp[fold][i,:,:]) for i in range(nk)]
+                            else:
+                                print('odd shape:', tmp.shape)
+                        else:
+                            print('odd shape:', tmp.shape)
+        else:
+            pkl_filename = filedir + sets[s] + '__' + topull + '.pkl'
+            with open(pkl_filename, "rb") as file:
+                tmp = pickle.load(file)
+            fold = -1
+            for mf in range(ncv):
+                for sf in range(ncv):
+                    fold += 1
+                    if tmp[fold].shape[0] == nk:
+                        if len(tmp[fold].shape) == 1:
+                            all_tmp[:, s,  mf, sf] = tmp[fold]
+                        elif len(tmp[fold].shape) == 2:
+                            all_tmp[:, s,  mf, sf] = [np.nanmean(tmp[fold][i, :]) for i in range(nk)]
+                        elif len(tmp[fold].shape) == 3:
+                            all_tmp[:, s,  mf, sf] = [np.nanmean(tmp[fold][i, :, :]) for i in range(nk)]
+                        else:
+                            print('odd shape:', tmp.shape)
+                    else:
+                        print('odd shape:', tmp.shape)
+
+        print('set: ' + sets[s] + ':')
+        print(np.nanmean(np.nanmean(all_tmp[:,s,:,:,:],axis=3),axis=2))
+
+    if save==1:
+        with open('all_' + topull + '.pkl',"wb") as file:
+            pickle.dump(all_tmp,file)
+
+    if withctr == 1:
+        df = pd.DataFrame({}, columns=[topull, 'set', 'ctr', 'mf', 'sf', 'k'])
+        for s in range(len(sets)):
+            for ctr in range(2):
+                for mf in range(ncv):
+                    for sf in range(ncv):
+                        for k in range(nk):
+                            tmp_df = pd.DataFrame(
+                                {topull: [all_tmp[k, s, ctr, mf, sf]],
+                                 'set': sets[s],
+                                 'ctr': ctr,
+                                 'mf': mf,
+                                 'sf': sf,
+                                 'k': int(k) + 2},
+                                columns=[topull, 'set', 'ctr', 'mf', 'sf', 'k'])
+                            df = df.append(tmp_df)
+    else:
+        df = pd.DataFrame({}, columns=[topull, 'set', 'mf', 'sf', 'k'])
+        for s in range(len(sets)):
+            for mf in range(ncv):
+                for sf in range(ncv):
+                    for k in range(nk):
+                        tmp_df = pd.DataFrame(
+                            {topull: [all_tmp[k, s,  mf, sf]],
+                             'set': sets[s],
+                             'mf': mf,
+                             'sf': sf,
+                             'k': int(k) + 2},
+                            columns=[topull, 'set',  'mf', 'sf', 'k'])
+                        df = df.append(tmp_df)
+
+    return all_tmp, df

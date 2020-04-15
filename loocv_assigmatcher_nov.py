@@ -480,10 +480,24 @@ def infer_iteration_clusmatch(consensus_labels, A):
     ni=A.shape[0]
     assignments = np.full([ni,nclus],np.nan)
     for i in range(ni):
-        a=consensus_labels
-        b=A[i,:]
-        a=np.delete(a,np.where(np.isnan(b))[0]); b=np.delete(b,np.where(np.isnan(b))[0])
-        assignments[i,:]=maxmatch_from_contingency_matrix(contingency_matrix(a,b), 1)
+
+        a=consensus_labels; au=np.unique(consensus_labels)
+
+        b=A[i,:]; bu=np.unique(A[i,:])
+
+        a=np.delete(a,np.where(np.isnan(b))[0]);
+        b=np.delete(b,np.where(np.isnan(b))[0])
+        a_u=np.unique(a);
+        b_u=np.unique(b);
+
+        tmp_conmat=contingency_matrix(a,b);
+
+        conmat=np.full([len(au), len(bu)],np.nan)
+        for m1 in range(len(a_u)):
+            for m2 in range(len(b_u)):
+                conmat[a_u[m1].astype(int),b_u[m2].astype(int)]=tmp_conmat[m1,m2]
+
+        assignments[i,:]=maxmatch_from_contingency_matrix(conmat, 1)
     return assignments
 
 
