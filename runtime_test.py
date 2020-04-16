@@ -18,3 +18,8 @@ mfs = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3])
 mf = 0
 k = 4
 all_subfold_betas=[BetaAggr[np.where(mfs==mf)[0][i]][k] for i in range(4)]
+
+
+# decision function:
+
+X[0,:].dot(clf.coef_.T)+clf.intercept_

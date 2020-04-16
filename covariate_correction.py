@@ -228,13 +228,11 @@ def makeAndSave_noventricles(Xcase, Xctrl, Xcase_cov, Xctrl_cov, savePrefix):
     sets = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_Scs_s', 'Tct_tc_s', 'Scs_sc_s',
             'Tct_Scs_tc_sc_s']
     for n in range(len(sets)):
-        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[
-            n] + '.csv'), mode='w') as file:
+        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[n] + '.csv'), mode='w') as file:
             filewriter = csv.writer(file, delimiter=',')
             filewriter.writerows(eval(sets[n]))
         file.close()
-        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[
-            n] + '_ctrl.csv'), mode='w') as file:
+        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[n] + '_ctrl.csv'), mode='w') as file:
             filewriter = csv.writer(file, delimiter=',')
             filewriter.writerows(eval(sets[n] + '_ctrl'))
         file.close()

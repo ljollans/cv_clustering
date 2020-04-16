@@ -1,13 +1,9 @@
 import matplotlib
 import matplotlib.pyplot as plt
-import nimfa
-import numpy as np
-import pandas as pd
-import sklearn
 from scipy import sparse as sp
 import scipy
-import copy
-
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score, v_measure_score, silhouette_score
 import pandas as pd
 import numpy as np
@@ -337,6 +333,13 @@ def gmm_js(gmm_p, gmm_q, n_samples=10**5):
     return (log_p_X.mean() - (log_mix_X.mean() - np.log(2))
             + log_q_Y.mean() - (log_mix_Y.mean() - np.log(2))) / 2
 
+
 def get_gradient_change(v):
     v_change = [v[i+1]-v[i] for i in range(len(v)-1)]
     return v_change
+
+
+def linear_multiclass_calibrated(Xtrain,ytrain, Xtest):
+    clf = LogisticRegression(random_state=0, multi_class='ovr').fit(Xtrain, ytrain)
+    clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(Xtrain, ytrain)
+    return clf_isotonic.predict_proba(Xtest), clf.coef_, clf.intercept_
