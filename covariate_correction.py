@@ -216,7 +216,7 @@ def makeAndSave(Xcase, Xctrl, Xcase_cov, Xctrl_cov, savePrefix):
         file.close()
 
 
-def makeAndSave_noventricles(Xcase, Xctrl, Xcase_cov, Xctrl_cov, savePrefix):
+def makeAndSave_noventricles(Xcase, Xctrl, Xcase_cov, Xctrl_cov, savePrefix, savedir):
     [Xctrlz, Xcasez, Xctrl_covz, Xcase_covz, Xcase_cz, Xcase_ctrl_cz, Xcase_csz, Xcase_ctrl_csz, Xcase_ctz,
      Xcase_ctrl_ctz] = corrections_noventricles(Xcase, Xctrl, Xcase_cov, Xctrl_cov)
     [Tc, Sc, TSc, Tc_tc, Sc_sc, TSc_tsc, Tct_s, Scs_s, Tct_Scs_s, Tct_tc_s, Scs_sc_s,
@@ -228,11 +228,11 @@ def makeAndSave_noventricles(Xcase, Xctrl, Xcase_cov, Xctrl_cov, savePrefix):
     sets = ['Tc', 'Sc', 'TSc', 'Tc_tc', 'Sc_sc', 'TSc_tsc', 'Tct_s', 'Scs_s', 'Tct_Scs_s', 'Tct_tc_s', 'Scs_sc_s',
             'Tct_Scs_tc_sc_s']
     for n in range(len(sets)):
-        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[n] + '.csv'), mode='w') as file:
+        with open((savedir + savePrefix + '_' + sets[n] + '.csv'), mode='w') as file:
             filewriter = csv.writer(file, delimiter=',')
             filewriter.writerows(eval(sets[n]))
         file.close()
-        with open(('/Users/lee_jollans/Documents/GitHub/ML_in_python/residfiles_all_210220/' + savePrefix + '_' + sets[n] + '_ctrl.csv'), mode='w') as file:
+        with open((savedir + savePrefix + '_' + sets[n] + '_ctrl.csv'), mode='w') as file:
             filewriter = csv.writer(file, delimiter=',')
             filewriter.writerows(eval(sets[n] + '_ctrl'))
         file.close()

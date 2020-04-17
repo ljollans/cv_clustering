@@ -32,7 +32,12 @@ class cluster:
 
         self.data = X
         self.nk = n_ks
-        self.cv_assignment = cv_assignment
+
+        if np.min(self.cv_assignment[np.isfinite(self.cv_assignment)])==0:
+            self.cv_assignment = cv_assignment
+        else:
+            self.cv_assignment = cv_assignment-1
+
         self.mainfold = mainfold
         self.subfold = subfold
         self.covariance = covariance
@@ -472,10 +477,24 @@ class kcluster:
         self.test_index_sub = mod.test_index_sub
         self.allbetas = mod.allbetas[k]
         self.allitcpt = mod.allitcpt[k]
+        self.traindata = mod.data[mod.train_index_sub,:]
+        self.testdata = mod.data[mod.test_index_sub,:]
+        self.trainlabels = mod.cluster_ensembles_labels[:,k]
+        self.meanbetas = np.nanmean(self.allbetas, axis=2)
+        self.meanitcpt = np.nanmean(self.allitcpt, axis=1)
 
 
     def decision_function(self, X):
-        meanbetas = np.nanmean(self.allbetas,axis=2)
-        meanitcpt = np.nanmean(self.itcpt, axis=1)
-        ypred = X.dot(meanbetas)+meanitcpt
+        ypred = X.dot(self.meanbetas)+self.meanitcpt
         return ypred
+
+    def fit(self,X):
+        maxx = np.full([X.shape[0]],np.nan)
+        ypred = X.dot(self.meanbetas)+self.meanitcpt
+        for n in range(X.shape[0]):
+            a=ypred[n,:]
+            maxx[n]=np.where(a==np.max(a))[0][0]
+        return maxx
+
+    def get_params(self, deep):
+        return 0
