@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import sklearn
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.cluster import AgglomerativeClustering
 from looco_loop import loocv_loop
 from loocv_assigmatcher_nov import (
@@ -322,6 +323,19 @@ class cluster:
             allitcpt.append(tmpitcpt)
         self.allbetas = allbetas
         self.allitcpt = allitcpt
+
+        self.proba = np.full([self.data.shape[0], self.nk],np.nan)
+        for k in range(self.nk):
+            clf.intercept_ = np.nanmean(self.allitcpt[k], axis=1)
+            clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
+
+            clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(self.data[self.train_index_sub, :],
+                                                                                    self.cluster_ensembles_labels[:, k])
+            clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
+
+            self.proba[:,k] = clf_isotonic.predict_proba(self.data)
+
+
 
 
     def best_k_plot(self):
