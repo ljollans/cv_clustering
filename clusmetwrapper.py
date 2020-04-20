@@ -34,7 +34,7 @@ class cluster:
         self.data = X
         self.nk = n_ks
 
-        if np.min(self.cv_assignment[np.isfinite(self.cv_assignment)])==0:
+        if np.min(cv_assignment[np.isfinite(cv_assignment)])==0:
             self.cv_assignment = cv_assignment
         else:
             self.cv_assignment = cv_assignment-1
