@@ -197,8 +197,11 @@ class cluster:
 
     def get_pac(self):
         self.pac = np.full([self.nk], np.nan)
+        self.pac_gradient = np.full([self.nk], np.nan)
         for nclus in range(self.nk):
             self.pac[nclus] = get_pac(self.consensus_matrix[nclus, :, :])
+            if nclus>0:
+                self.pac_gradient[nclus]=self.pac[nclus]-self.pac[nclus-1]
 
     def cophenetic_correlation(self):
         self.coph = np.full([self.nk], np.nan)
@@ -342,8 +345,14 @@ class cluster:
             else:
                 clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
 
-            clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(self.data[self.train_index_sub, :],
+            try:
+                clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(self.data[self.train_index_sub, :],
                                                                                     self.cluster_ensembles_labels[:, k])
+            except:
+                clf_isotonic = CalibratedClassifierCV(clf, cv=4, method='isotonic').fit(
+                    self.data[self.train_index_sub, :],
+                    self.cluster_ensembles_labels[:, k])
+
             clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
 
             tmp_proba = clf_isotonic.predict_proba(self.data)
