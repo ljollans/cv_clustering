@@ -61,7 +61,10 @@ for current_set in range(len(sets)):
 
                 mod = cluster(data, n_ks, cv_assignment, mainfold, subfold, "full")
                 mod.pull_in_saves(bic, sil, cal, all_clus_labels, auc, f1, betas)
-                pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
+                if ctr==1:
+                    pkl_filename = (savedir + sets[current_set] + '_mod_ctrl_' + str(fold))
+                else:
+                    pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
                 print(pkl_filename)
                 with open(pkl_filename, "wb") as file:
                     pickle.dump(mod,file)

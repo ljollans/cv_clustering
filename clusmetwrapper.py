@@ -101,6 +101,16 @@ class cluster:
         self.f1 = f1
         self.betas = betas
 
+    def micro_macro_f1(self):
+        self.micro_f1 = np.full(self.nk)
+        self.macro_f1 = np.full(self.nk)
+
+        for nclus in range(self.nk):
+            self.macro_f1[nclus]=np.nanmean(self.f1[:,nclus])
+            #for k in range(nclus+1):
+
+
+
     def plot_loocv(self):
         df = pd.DataFrame({}, columns=["bic", "sil", "auc", "f1", "k", "ppt"])
         for nclus in range(self.nk):
