@@ -101,15 +101,6 @@ class cluster:
         self.f1 = f1
         self.betas = betas
 
-    def micro_macro_f1(self):
-        self.micro_f1 = np.full(self.nk)
-        self.macro_f1 = np.full(self.nk)
-
-        for nclus in range(self.nk):
-            self.macro_f1[nclus]=np.nanmean(self.f1[:,nclus])
-            #for k in range(nclus+1):
-
-
 
     def plot_loocv(self):
         df = pd.DataFrame({}, columns=["bic", "sil", "auc", "f1", "k", "ppt"])
@@ -312,6 +303,9 @@ class cluster:
         allitcpt = []
         X = self.data[self.train_index_sub,:]
         y = self.cluster_ensembles_labels
+        self.micro_f1 = np.full([self.nk,5],np.nan)
+        self.macro_f1 = np.full([self.nk,5],np.nan)
+
         for nclus in range(self.nk):
             if nclus==0:
                 tmpbetas = np.full([self.data.shape[1],  5], np.nan)
@@ -324,8 +318,13 @@ class cluster:
                 clf = LogisticRegression(random_state=0, multi_class='ovr').fit(X[train_index, :],
                                                                                 y[train_index, nclus],
                                                                                 )
+                testlabels = clf.predict(X[test_index,:])
+                self.micro_f1[nclus, fold] = sklearn.metrics.f1_score(y[test_index, nclus], testlabels, average='micro')
+                self.macro_f1[nclus, fold] = sklearn.metrics.f1_score(y[test_index, nclus], testlabels, average='macro')
+
+
                 if nclus==0:
-                    tmpbetas[:,fold]= np.squeeze(clf.coef_.T)
+                    tmpbetas[:,fold] = np.squeeze(clf.coef_.T)
                 else:
                     tmpbetas[:, :, fold] = clf.coef_.T
                 tmpitcpt[:, fold] = clf.intercept_
@@ -334,16 +333,22 @@ class cluster:
         self.allbetas = allbetas
         self.allitcpt = allitcpt
 
-        self.proba = np.full([self.data.shape[0], self.nk],np.nan)
+        self.proba = []
+        self.highest_prob = np.full([self.data.shape[0], self.nk], np.nan)
         for k in range(self.nk):
             clf.intercept_ = np.nanmean(self.allitcpt[k], axis=1)
-            clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
+            if k==0:
+                clf.coef_ = np.nanmean(self.allbetas[k], axis=1)
+            else:
+                clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
 
             clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(self.data[self.train_index_sub, :],
                                                                                     self.cluster_ensembles_labels[:, k])
             clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
 
-            self.proba[:,k] = clf_isotonic.predict_proba(self.data)
+            tmp_proba = clf_isotonic.predict_proba(self.data)
+            self.proba.append(tmp_proba)
+            self.highest_prob[:,k] = [np.max(tmp_proba[i,:]) for i in range(tmp_proba.shape[0])]
 
 
 

@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 
 from clusmetwrapper import cluster
 
@@ -24,13 +25,10 @@ sets = [
     "Tct_Scs_tc_sc_s",
 ]
 
-
-
-for current_set in [1,2,3,4,5,6,7,8,9,10,11]:
-    for ctr in range(2):
-
-        for mainfold in range(4):
-            for subfold in range(4):
+for current_set in [0]:
+    for ctr in [0]:
+        for mainfold in [0]:
+            for subfold in [0]:
                 fold = (mainfold*4)+subfold
 
                 if ctr==1:
@@ -40,6 +38,15 @@ for current_set in [1,2,3,4,5,6,7,8,9,10,11]:
                 print(pkl_filename)
                 with open(pkl_filename, "rb") as file:
                     mod = pickle.load(file)
-                mod.cluster_ensembles()
-                with open(pkl_filename, "wb") as file:
-                    pickle.dump(mod,file)
+
+                mod.cluster_ensembles_new_classification()
+
+                plt.plot(np.nanmean(mod.micro_f1,axis=1))
+                plt.plot(np.nanmean(mod.macro_f1, axis=1))
+                plt.legend(['micro','macro'])
+                plt.show()
+
+                #with open(pkl_filename, "wb") as file:
+                #    pickle.dump(mod,file)
+
+
