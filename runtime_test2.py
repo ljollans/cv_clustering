@@ -26,8 +26,8 @@ sets = [
     "Tct_Scs_tc_sc_s",
 ]
 
-for current_set in [2]:
-    for ctr in [1]:
+for current_set in [3,4,5,6,7,8,9,10,11]:
+    for ctr in [0,1]:
         for mainfold in range(4):
             for subfold in range(4):
                 fold = (mainfold*4)+subfold

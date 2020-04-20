@@ -1,7 +1,8 @@
 import numpy as np
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.preprocessing import StandardScaler
 from sklearn import metrics
-
+from sklearn.linear_model import LogisticRegression
 
 def subfold_mse(all_subfold_betas):
     # all_subfold_betas is a list of length n_cv
@@ -53,16 +54,20 @@ def combine_weighted_betas(allmses,all_subfold_betas, idx_fold):
     ncv=len(all_subfold_betas)
     all_weighted_betas = np.full([nclus, nfeatures, ncv], np.nan)
     aggregated_betas = np.full([nfeatures,nclus],np.nan)
+
     for k in range(nclus):
         index_beta = all_subfold_betas[idx_fold][:, k]
         all_weighted_betas[k, :,idx_fold]=index_beta
+
         for cv in range(ncv):
             if cv != idx_fold:
                 all_weighted_cvbetas = np.full([nfeatures, nclus], np.nan)
+
                 for clus1 in range(nclus):
                     crit=all_subfold_betas[cv][:, clus1]
-                    weight = 1/allmses[idx_fold,cv,k,clus1]
+                    weight = (1/(1+allmses[idx_fold,cv,k,clus1]))
                     all_weighted_cvbetas[:,clus1] = crit * weight
+
                 all_weighted_betas[k, :,cv]= np.nanmean(all_weighted_cvbetas,axis=1)
         aggregated_betas[:,k]=np.nanmean(all_weighted_betas[k,:,:],axis=1)
     return all_weighted_betas, aggregated_betas
@@ -72,5 +77,22 @@ def aggregate(all_subfold_betas):
     allmses, allranks, n_unique_fits, mutual_best_fit, mutual_best_fit_mse, matched_fit_mse = subfold_mse(all_subfold_betas)
     bilateral_matched_fit_error = np.nansum(matched_fit_mse, axis=0) + np.nansum(matched_fit_mse, axis=1)
     smallest_overall_error = np.where(bilateral_matched_fit_error==np.nanmin(bilateral_matched_fit_error))[0]
-    all_weighted_betas, aggregated_betas = combine_weighted_betas(allmses, all_subfold_betas, smallest_overall_error)
+    all_weighted_betas, aggregated_betas = combine_weighted_betas(allmses, all_subfold_betas, smallest_overall_error[0])
     return aggregated_betas, all_weighted_betas
+
+
+def get_proba(Xtrain,labels, betas, Xtest):
+    # here i am assuming that the first row of betas is the intercept row
+    itcpt = betas[0,:]
+    betas = betas[1:,:]
+    k=betas.shape[1]
+    clf = LogisticRegression(random_state=0, multi_class='ovr').fit(Xtrain,labels)
+    clf.intercept_ = itcpt
+    clf.coef_ = betas
+    try:
+        clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(Xtrain, labels)
+    except:
+        clf_isotonic = CalibratedClassifierCV(clf, cv=4, method='isotonic').fit(Xtrain, labels)
+    train_proba = clf_isotonic.predict_proba(Xtrain)
+    test_proba = clf_isotonic.predict_proba(Xtest)
+    return train_proba, test_proba
