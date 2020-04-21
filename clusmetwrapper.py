@@ -8,13 +8,13 @@ import seaborn as sns
 import sklearn
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.cluster import AgglomerativeClustering
-from core.looco_loop import loocv_loop
-from core.loocv_assigmatcher_nov import (
+from looco_loop import loocv_loop
+from loocv_assigmatcher_nov import (
     n_clus_retrieval_grid,
     get_co_cluster_count,
     get_consensus_labels,
     infer_iteration_clusmatch, collect_betas_for_corresponding_clus, sort_into_clusters_argmax_ecdf)
-from core.utils import coph_cor, rand_score_withnans, get_gradient_change, silhouette_score_withnans, get_pac
+from utils import coph_cor, rand_score_withnans, get_gradient_change, silhouette_score_withnans, get_pac
 import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold

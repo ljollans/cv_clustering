@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-from core.beta_aggregate import aggregate
+from beta_aggregate import aggregate
 
 input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
@@ -49,6 +49,7 @@ for current_set in range(len(sets)):
                     print(pkl_filename)
                     with open(pkl_filename, "rb") as file:
                         mod = pickle.load(file)
+
                     labels.append(mod.cluster_ensembles_labels[:,k])
                     i=np.nanmean(mod.allitcpt[k], axis=1)
                     b=np.nanmean(mod.allbetas[k],axis=2)
@@ -58,9 +59,11 @@ for current_set in range(len(sets)):
 
                 # save aggregated betas
                 import csv
-
-                with open((savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_' +  str(mainfold) + '.csv'),
-                          mode='w') as file:
+                if ctr==1:
+                    ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_ctrl_' + str(mainfold) + '.csv')
+                else:
+                    ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_' + str(mainfold) + '.csv')
+                with open(ss,mode='w') as file:
                     filewriter = csv.writer(file, delimiter=',')
                     filewriter.writerows(aggregated_betas)
                 file.close()

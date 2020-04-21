@@ -3,8 +3,8 @@ import numpy as np
 import time
 import pickle
 
-from core.clusmetwrapper import cluster
-from core.utils import identify_set_and_fold
+from clusmetwrapper import cluster
+from utils import identify_set_and_fold
 import sys
 
 sys.path.append(

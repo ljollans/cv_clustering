@@ -15,7 +15,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score, f1_score
 from sklearn.model_selection import KFold
 
-from core.multi_logr_bag_utils import bag_log, log_in_CV, get_metrics
+from multi_logr_bag_utils import bag_log, log_in_CV, get_metrics
 
 
 def multi_logr_bagr(nboot, yx, n_groups, n_cv_folds, print_output):

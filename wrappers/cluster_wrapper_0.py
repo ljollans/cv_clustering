@@ -10,8 +10,8 @@ import csv
 import numpy as np
 import sys
 import time
-from core.clusmetwrapper import cluster
-from core.utils import identify_set_and_fold
+from clusmetwrapper import cluster
+from utils import identify_set_and_fold
 
 seconds1 = time.time()
 

@@ -1,5 +1,5 @@
 import numpy as np
-from core.clusmets import calculate_clustering_metrics
+from clusmets import calculate_clustering_metrics
 
 
 def loocv_loop(x_all, covariance, k):

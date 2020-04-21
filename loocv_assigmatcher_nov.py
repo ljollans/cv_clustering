@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import csv
 
-from core.utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check, \
+from utils import select_trainset, percent_overlap_vectors, get_pac, rand_score_withnans, max_min_val_check, \
     contingency_matrix, ecdf
 
 

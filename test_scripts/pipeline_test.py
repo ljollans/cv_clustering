@@ -4,9 +4,9 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from itertools import permutations
 
-from core.clusmetwrapper import cluster
-from core.loocv_assigmatcher_nov import get_consensus_labels
-from core.utils import create_ref_data
+from clusmetwrapper import cluster
+from loocv_assigmatcher_nov import get_consensus_labels
+from utils import create_ref_data
 
 iris = datasets.load_iris()
 X = iris.data

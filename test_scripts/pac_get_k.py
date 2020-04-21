@@ -1,6 +1,6 @@
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 from scipy.stats import ttest_ind
-from core.loocv_assigmatcher_nov import getloopcount, get_k_from_bic, get_clusassignments_from_LOOCV, n_clus_retrieval_chk, \
+from loocv_assigmatcher_nov import getloopcount, get_k_from_bic, get_clusassignments_from_LOOCV, n_clus_retrieval_chk, \
     get_consensus_labels, return_train_data
 import numpy as np
 import pickle
@@ -9,8 +9,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import csv
 
-from core.multi_logr_bag import multi_logr_bagr
-from core.utils import select_trainset, rand_score_withnans, get_gradient_change
+from multi_logr_bag import multi_logr_bagr
+from utils import select_trainset, rand_score_withnans, get_gradient_change
 
 savedir_null = '/Users/lee_jollans/Projects/clustering_pilot/null/JAN1_'
 savedir = '/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_'

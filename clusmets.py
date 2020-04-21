@@ -8,7 +8,7 @@ Created on Thu Jan 16 14:14:07 2020
 import numpy as np
 from sklearn.mixture import GaussianMixture
 from sklearn import metrics
-from core.multi_logr_bag import multi_logr_bagr
+from multi_logr_bag import multi_logr_bagr
 
 
 def calculate_clustering_metrics(design):
