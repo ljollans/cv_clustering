@@ -1,7 +1,6 @@
 import csv
 import numpy as np
 import pickle
-
 from beta_aggregate import get_proba
 
 input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
@@ -32,8 +31,8 @@ with open((cv_assignment_dir + "CVassig398.csv"), "r") as f:
 
 testprobabilities = np.full([8, len(sets), 2, 4], np.nan)
 
-for current_set in [0]:  # range(len(sets)):
-    for ctr in [0]:  # range(2):
+for current_set in range(len(sets)):
+    for ctr in range(2):
 
         # data import
         if ctr == 1:
@@ -44,7 +43,7 @@ for current_set in [0]:  # range(len(sets)):
             reader = csv.reader(f, delimiter=",")
             data = np.array(list(reader)).astype(float)
 
-        for kloop in [3]:  # range(7):
+        for kloop in range(7):
             k = kloop + 1
 
             trainproba = []
@@ -75,14 +74,18 @@ for current_set in [0]:  # range(len(sets)):
                 a = np.array([np.max(crit[i, :]) for i in range(crit.shape[0])])
                 testprobabilities[k, current_set, ctr, mainfold] = np.nanmean(a)
 
+            if ctr==1:
+                pkl_filename1 = (savedir + sets[current_set] + '_trainprob_k_ctrl' + str(k) + '.pkl')
+                pkl_filename2 = (savedir + sets[current_set] + '_testprob_k_ctrl' + str(k) + '.pkl')
+            else:
+                pkl_filename1 = (savedir + sets[current_set] + '_trainprob_k' + str(k) + '.pkl')
+                pkl_filename2 = (savedir + sets[current_set] + '_testprob_k' + str(k) + '.pkl')
 
-                if ctr==1:
-                    pkl_filename = (savedir + sets[current_set] + '_mod_ctrl_' + str(fold))
-                else:
-                    pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
-            pkl_filename = ''
-            with open(pkl_filename, "wb") as file:
+            with open(pkl_filename1, "wb") as file:
                 pickle.dump(trainproba, file)
-            pkl_filename = ''
-            with open(pkl_filename, "wb") as file:
+            with open(pkl_filename2, "wb") as file:
                 pickle.dump(testproba, file)
+
+pkl_filename = (savedir + 'testprobabilities.pkl')
+with open(pkl_filename, "wb") as file:
+    pickle.dump(testprobabilities, file)

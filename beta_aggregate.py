@@ -89,10 +89,7 @@ def get_proba(Xtrain,labels, betas, Xtest):
     clf = LogisticRegression(random_state=0, multi_class='ovr').fit(Xtrain,labels)
     clf.intercept_ = itcpt
     clf.coef_ = betas
-    try:
-        clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(Xtrain, labels)
-    except:
-        clf_isotonic = CalibratedClassifierCV(clf, cv=4, method='isotonic').fit(Xtrain, labels)
+    clf_isotonic = CalibratedClassifierCV(clf,  method='isotonic').fit(Xtrain, labels)
     train_proba = clf_isotonic.predict_proba(Xtrain)
     test_proba = clf_isotonic.predict_proba(Xtest)
     return train_proba, test_proba
