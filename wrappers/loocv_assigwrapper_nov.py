@@ -1,6 +1,6 @@
 import statistics
 
-from loocv_assigmatcher_nov import (
+from cv_clustering.loocv_assigmatcher_nov import (
     get_k_from_bic,
     getloopcount,
     get_clusassignments_from_LOOCV,
@@ -16,7 +16,7 @@ import pickle
 import csv
 import numpy as np
 
-from utils import max_min_val_check
+from cv_clustering.utils import max_min_val_check
 
 savedir = "/Users/lee_jollans/Projects/clustering_pilot//FEB_PUT/FEB_"
 input_files_dir ="/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"

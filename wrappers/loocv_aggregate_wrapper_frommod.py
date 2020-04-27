@@ -1,7 +1,7 @@
 import csv
 import numpy as np
 import pickle
-from loocv_assigmatcher_nov import pull_from_mod2
+from cv_clustering.loocv_assigmatcher_nov import pull_from_mod2
 
 input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"

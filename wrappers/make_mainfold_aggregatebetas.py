@@ -1,11 +1,11 @@
 import numpy as np
 import pickle
 
-from beta_aggregate import aggregate
+from cv_clustering.beta_aggregate import aggregate, get_proba
 
-input_files_dir = "/Users/lee_jollans/Projects/clustering_pilot/residfiles_all_210220/"
+input_files_dir = '/Users/lee_jollans/Projects/clustering_pilot/IXI/IXI_'
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
-savedir = ('/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_')
+savedir = ('/Users/lee_jollans/Projects/clustering_pilot/IXI/IXI_')
 
 # presets
 sets = [
@@ -26,74 +26,76 @@ sets = [
 
 # all_subfold_betas is a list of length n_cv
     # each entry has the shape nfeatures x nclusters
+import csv
 
-testprobabilities = np.full([8,len(sets), 2, 4], np.nan)
+with open((cv_assignment_dir + "CVassigIXI.csv"), "r") as f:
+    reader = csv.reader(f, delimiter=",")
+    cv_assignment = np.array(list(reader)).astype(float)
+
+n=cv_assignment.shape[0]
+
+allargmax = np.full([n,12,8,4],np.nan)
+allproba = np.full([n,12,8,4],np.nan)
 
 for current_set in range(len(sets)):
-    for ctr in range(2):
-        for kloop in range(7):
-            k = kloop + 1
-            trainproba = []
-            testproba = []
-            for mainfold in range(4):
-                allbetas=[]
-                allitcps = []
-                labels = []
-                for subfold in range(4):
-                    fold = (mainfold*4)+subfold
+    data_path = input_files_dir + sets[current_set] + ".csv"
+    with open(data_path, "r") as f:
+        reader = csv.reader(f, delimiter=",")
+        data = np.array(list(reader)).astype(float)
 
-                    if ctr==1:
-                        pkl_filename = (savedir + sets[current_set] + '_mod_ctrl_' + str(fold))
-                    else:
-                        pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
-                    print(pkl_filename)
-                    with open(pkl_filename, "rb") as file:
-                        mod = pickle.load(file)
+    for k in range(8):
+        trainproba = []
+        testproba = []
 
-                    labels.append(mod.cluster_ensembles_labels[:,k])
-                    i=np.nanmean(mod.allitcpt[k], axis=1)
+        for mainfold in range(4):
+            maintrain = np.where(np.isfinite(cv_assignment[:, mainfold]))[0]
+            allbetas=[]
+            allitcps = []
+            labels = []
+
+            for subfold in range(4):
+                fold = (mainfold*4)+subfold
+
+                pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
+                print(pkl_filename)
+                with open(pkl_filename, "rb") as file:
+                    mod = pickle.load(file)
+
+                labels.append(mod.cluster_ensembles_labels[:,k])
+                i=np.nanmean(mod.allitcpt[k], axis=1)
+                if k>0:
                     b=np.nanmean(mod.allbetas[k],axis=2)
-                    print(b.shape)
-                    allbetas.append(np.append(np.expand_dims(i,axis=1).T,b,axis=0))
-                aggregated_betas, all_weighted_betas = aggregate(allbetas)
-
-                # save aggregated betas
-                import csv
-                if ctr==1:
-                    ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_ctrl_' + str(mainfold) + '.csv')
                 else:
-                    ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_' + str(mainfold) + '.csv')
-                with open(ss,mode='w') as file:
-                    filewriter = csv.writer(file, delimiter=',')
-                    filewriter.writerows(aggregated_betas)
-                file.close()
+                    b = np.nanmean(mod.allbetas[k], axis=1)
+                    b = np.expand_dims(b, axis=1)
+                    b = np.append(b, -b, axis=1)
+                print(b.shape)
+                allbetas.append(np.append(np.expand_dims(i,axis=1).T,b,axis=0))
 
+            aggregated_betas, all_weighted_betas = aggregate(allbetas)
+            ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_' + str(mainfold) + '.csv')
+            with open(ss,mode='w') as file:
+                filewriter = csv.writer(file, delimiter=',')
+                filewriter.writerows(aggregated_betas)
+            file.close()
 
-              #  print(aggregated_betas.shape)
-              #  print(all_weighted_betas.shape)
-              #  print(aggregated_betas[0,:])#
+            Xtrain = data[maintrain, :]
+            tmpX = np.append(np.ones(shape=[Xtrain.shape[0], 1]), Xtrain, axis=1)
+            newY = tmpX.dot(aggregated_betas)
+            argmaxY = np.array([np.where(newY[i, :] == np.max(newY[i, :]))[0][0] for i in range(newY.shape[0])])
+            tmp_trainproba, tmp_testproba = get_proba(Xtrain, argmaxY, aggregated_betas, data)
 
-             #   tmpX = np.append(np.ones(shape=[mod.data.shape[0],1]),mod.data, axis=1)
-             #   newY = tmpX.dot(aggregated_betas)
-             #   argmaxY = [np.where(newY[i,:]==np.max(newY[i,:]))[0][0] for i in range(newY.shape[0])]
+            argmaxY = np.array([np.where(tmp_testproba[i, :] == np.max(tmp_testproba[i, :]))[0][0] for i in
+                                range(tmp_testproba.shape[0])])
+            valmaxY = np.array([np.max(tmp_testproba[i, :]) for i in range(tmp_testproba.shape[0])])
 
-                # rand
-                #for subfold in range(4):
-                #    trainsub = np.where((mod.cv_assignment[:, mainfold] != subfold) & (~np.isnan(mod.cv_assignment[:, mainfold])))[0]
-                #    orig = labels[subfold]
-                #    newYsub = [argmaxY[i] for i in trainsub]
-                #    print(sklearn.metrics.adjusted_rand_score(orig, newYsub))
+            allargmax[:, current_set, k, mainfold] = argmaxY
+            allproba[:, current_set, k, mainfold] = valmaxY
 
-             #   maintrain = np.where(np.isfinite(mod.cv_assignment[:, 0]))[0]
-             #   maintest = np.where(np.isnan(mod.cv_assignment[:, 0]))[0]
+pkl_filename = (savedir + 'all_labelsmain_sigmoid.pkl')
+with open(pkl_filename, "wb") as file:
+    pickle.dump(allargmax, file)
+pkl_filename = (savedir + 'all_probamain_sigmoid.pkl')
+with open(pkl_filename, "wb") as file:
+    pickle.dump(allproba, file)
 
-             #   Xtrain = mod.data[maintrain,:]
-             #   trainlabels = [argmaxY[i] for i in maintrain]
-             #   Xtest = mod.data[maintest,:]
-             #   tmp_trainproba, tmp_testproba = get_proba(Xtrain,trainlabels, aggregated_betas, Xtest)
-             #   trainproba.append(tmp_trainproba)
-             #   testproba.append(tmp_testproba)
-
-             #   crit = testproba[mainfold]
-             #   a = np.array([np.max(crit[i, :]) for i in range(crit.shape[0])])
-             #   testprobabilities[k,current_set,ctr,mainfold]=np.nanmean(a)
