@@ -343,3 +343,22 @@ def linear_multiclass_calibrated(Xtrain,ytrain, Xtest):
     clf = LogisticRegression(random_state=0, multi_class='ovr').fit(Xtrain, ytrain)
     clf_isotonic = CalibratedClassifierCV(clf, cv=5, method='isotonic').fit(Xtrain, ytrain)
     return clf_isotonic.predict_proba(Xtest), clf.coef_, clf.intercept_
+
+
+def do_all_clus_corrs(all_subfold_betas, itcpt):
+    ncv = len(all_subfold_betas)
+    nclus = all_subfold_betas[0].shape[1]
+    allcorrs = np.full([ncv, ncv, nclus, nclus], np.nan)
+    for sf1 in range(ncv):
+        for sf2 in range(ncv):
+            if sf1 != sf2:
+                for clus1 in range(nclus):
+                    for clus2 in range(nclus):
+                        if itcpt==1:
+                            a=all_subfold_betas[sf1][1:, clus1]
+                            b=all_subfold_betas[sf2][1:, clus2]
+                        else:
+                            a = all_subfold_betas[sf1][:, clus1]
+                            b = all_subfold_betas[sf2][:, clus2]
+                        allcorrs[sf1, sf2, clus1, clus2] = np.corrcoef(a,b)[0,1]
+    return allcorrs

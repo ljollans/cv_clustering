@@ -106,7 +106,14 @@ def get_proba(Xtrain, labels, betas, Xtest):
     clf = LogisticRegression(random_state=0, multi_class='ovr').fit(Xtrain, labels)
     clf.intercept_ = itcpt
     clf.coef_ = betas
-    clf_isotonic = CalibratedClassifierCV(clf, method='isotonic').fit(Xtrain, labels)
+    clf_isotonic = CalibratedClassifierCV(clf, method='sigmoid').fit(Xtrain, labels)
     train_proba = clf_isotonic.predict_proba(Xtrain)
     test_proba = clf_isotonic.predict_proba(Xtest)
     return train_proba, test_proba
+
+def predictargmax(X, betas):
+    tmpX = np.append(np.ones(shape=[X.shape[0], 1]), X, axis=1)
+    newY = tmpX.dot(betas)
+    argmaxY = np.array([np.where(newY[i, :] == np.max(newY[i, :]))[0][0] for i in range(newY.shape[0])])
+    return argmaxY
+
