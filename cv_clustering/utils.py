@@ -31,19 +31,23 @@ def select_testset(cv_assignment, mainfold, subfold):
         & (~np.isnan(cv_assignment[:, mainfold]))
     )[0]
 
-def colorscatter(x, y, d, ax):
+def colorscatter(x, y, d, ax, legendyn=1, aa=1, mm='o'):
     try:
         groups = set(y[~np.isnan(y)])
     except:
         groups = np.unique(y)
-    colors = matplotlib.cm.tab10(np.linspace(0, 1, 10))
+    if len(groups)>10:
+        colors = matplotlib.cm.tab20(np.linspace(0, 1, 20))
+    else:
+        colors = matplotlib.cm.tab10(np.linspace(0, 1, 10))
     ctr = -1
     for g in groups:
         ctr += 1
         findme = np.where(y == g.astype(int))[0]
-        cc = np.expand_dims(colors[ctr], axis=0)
-        ax.scatter(x[findme, 0], x[findme, 1], c=cc, s=d[findme] * 5)
-    plt.legend(groups)
+        cc = np.expand_dims(colors[g.astype(int)], axis=0)
+        ax.scatter(x[findme, 0], x[findme, 1], c=cc, s=d[findme] * 5, alpha=aa, marker=mm)
+    if legendyn==1:
+        plt.legend(groups)
 
 
 def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):

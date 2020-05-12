@@ -12,8 +12,11 @@
 
 # module imports
 import numpy as np
+from sklearn.ensemble import BaggingClassifier
 from sklearn.metrics import roc_auc_score, f1_score
 from sklearn.model_selection import KFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.calibration import CalibratedClassifierCV
 
 from cv_clustering.multi_logr_bag_utils import bag_log, log_in_CV, get_metrics
 
@@ -170,5 +173,55 @@ def multi_logr_bagr(nboot, yx, n_groups, n_cv_folds, print_output):
     )
 
 
+def new_multiclassifCV(X, y, ncv, nbag):
+    kf = KFold(n_splits=ncv, shuffle=True, random_state=None)
+    allbetas = []
+    allitcpt = []
+
+    ug = np.unique(y)
+    if len(ug) == 2:
+        meanbetas = np.full([ncv, X.shape[1]], np.nan)
+        meanitcpt = np.full([ncv], np.nan)
+    else:
+        meanbetas = np.full([ncv, X.shape[1], len(ug)], np.nan)
+        meanitcpt = np.full([ncv, len(ug)], np.nan)
+
+    fold = -1
+    for train_index, test_index in kf.split(X):
+        fold += 1
+
+        clf = LogisticRegression(random_state=0, multi_class='ovr').fit(X[train_index, :],
+                                                                        y[train_index],
+                                                                        )
+
+        if nbag == 1:
+            betas2add = clf.coef_.T
+            itcpt2add = clf.intercept_
+        else:
+            bag_regr = BaggingClassifier(base_estimator=clf, n_estimators=nbag, max_samples=0.66, max_features=1.0,
+                                         bootstrap=True, bootstrap_features=False, oob_score=False,
+                                         warm_start=False,
+                                         n_jobs=None, random_state=None, verbose=0)
+            bag_regr.fit(X[train_index, :], y[train_index])
+
+            if len(ug) == 2:
+                betas_all = np.full([X.shape[1], nbag], np.nan)
+                itcpt_all = np.full([nbag], np.nan)
+                for bag in range(nbag):
+                    betas_all[:, bag] = bag_regr.estimators_[bag].coef_[0]
+                    itcpt_all[bag] = bag_regr.estimators_[bag].intercept_
+                meanbetas[fold, :] = np.nanmedian(betas_all, axis=1)
+                meanitcpt[fold] = np.nanmedian(itcpt_all)
+            else:
+                betas_all = np.full([X.shape[1], len(ug), nbag], np.nan)
+                itcpt_all = np.full([len(ug), nbag], np.nan)
+                for bag in range(nbag):
+                    for c in range(len(ug)):
+                        betas_all[:, c, bag] = bag_regr.estimators_[bag].coef_[c]
+                        itcpt_all[c, bag] = bag_regr.estimators_[bag].intercept_[c]
+                meanbetas[fold, :, :] = np.nanmedian(betas_all, axis=2)
+                meanitcpt[fold, :] = np.nanmedian(itcpt_all, axis=1)
+
+    return np.nanmedian(meanbetas, axis=0), np.nanmedian(meanitcpt, axis=0)
 
 
