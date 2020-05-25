@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from itertools import permutations
 
-from cv_clustering.clusmetwrapper import cluster
+from clusmetwrapper import cluster
 from cv_clustering.loocv_assigmatcher_nov import get_consensus_labels
 from cv_clustering.utils import create_ref_data
 

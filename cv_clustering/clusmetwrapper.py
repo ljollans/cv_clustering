@@ -19,9 +19,9 @@ import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 
-sys.path.append(
-    "/Users/lee_jollans/PycharmProjects/Cluster_Ensembles/src/Cluster_Ensembles"
-)
+#sys.path.append(
+#    "/Users/lee_jollans/PycharmProjects/Cluster_Ensembles/src/Cluster_Ensembles"
+#)
 import Cluster_Ensembles as CE
 
 

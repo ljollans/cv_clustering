@@ -1,6 +1,6 @@
 import csv
 import numpy as np
-from cv_clustering.clusmetwrapper import cluster
+from clusmetwrapper import cluster
 import pickle
 from cv_clustering.loocv_assigmatcher_nov import pull_from_mod2
 
