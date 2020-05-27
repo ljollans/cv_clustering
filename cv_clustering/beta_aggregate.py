@@ -64,7 +64,7 @@ def vector_mse(a, b):
     return vmse
 
 
-def combine_weighted_betas(allmses, all_subfold_betas, idx_fold):
+def combine_weighted_betas(allmses, all_subfold_betas, idx_fold, method):
     nclus = all_subfold_betas[0].shape[1]
     nfeatures = all_subfold_betas[0].shape[0]
     ncv = len(all_subfold_betas)
@@ -81,7 +81,10 @@ def combine_weighted_betas(allmses, all_subfold_betas, idx_fold):
 
                 for clus1 in range(nclus):
                     crit = all_subfold_betas[cv][:, clus1]
-                    weight = (1 / (1 + allmses[idx_fold, cv, k, clus1]))
+                    if method==0:
+                        weight = (1 / (1 + allmses[idx_fold, cv, k, clus1]))
+                    elif method==1:
+                        weight=np.corrcoef(index_beta,all_subfold_betas[cv][:, clus1])[0,1]
                     all_weighted_cvbetas[:, clus1] = crit * weight
 
                 all_weighted_betas[k, :, cv] = np.nanmean(all_weighted_cvbetas, axis=1)
@@ -89,12 +92,12 @@ def combine_weighted_betas(allmses, all_subfold_betas, idx_fold):
     return all_weighted_betas, aggregated_betas
 
 
-def aggregate(all_subfold_betas):
+def aggregate(all_subfold_betas, method):
     allmses, allranks, n_unique_fits, mutual_best_fit, mutual_best_fit_mse, matched_fit_mse = subfold_mse(
         all_subfold_betas)
     bilateral_matched_fit_error = np.nansum(matched_fit_mse, axis=0) + np.nansum(matched_fit_mse, axis=1)
     smallest_overall_error = np.where(bilateral_matched_fit_error == np.nanmin(bilateral_matched_fit_error))[0]
-    all_weighted_betas, aggregated_betas = combine_weighted_betas(allmses, all_subfold_betas, smallest_overall_error[0])
+    all_weighted_betas, aggregated_betas = combine_weighted_betas(allmses, all_subfold_betas, smallest_overall_error[0], method)
     return aggregated_betas, all_weighted_betas
 
 

@@ -19,9 +19,9 @@ import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold
 
-#sys.path.append(
-#    "/Users/lee_jollans/PycharmProjects/Cluster_Ensembles/src/Cluster_Ensembles"
-#)
+sys.path.append(
+    "/Users/lee_jollans/PycharmProjects/Cluster_Ensembles/src/Cluster_Ensembles"
+)
 import Cluster_Ensembles as CE
 
 
@@ -354,6 +354,25 @@ class cluster:
             self.highest_prob[:,k] = [np.max(tmp_proba[i,:]) for i in range(tmp_proba.shape[0])]
 
 
+    def newclass_sil(self):
+        self.proba = []
+        self.highest_prob = np.full([self.data.shape[0], self.nk], np.nan)
+        for k in range(self.nk):
+            clf = LogisticRegression(random_state=0, multi_class='ovr')
+            clf.intercept_ = np.nanmean(self.allitcpt[k], axis=1)
+            if k == 0:
+                clf.coef_ = np.nanmean(self.allbetas[k], axis=1)
+            else:
+                clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
+
+            clf_isotonic = CalibratedClassifierCV(clf, method='sigmoid').fit(self.data[self.train_index_sub, :],
+                                                                             self.cluster_ensembles_labels[:, k])
+
+            clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
+
+            tmp_proba = clf_isotonic.predict_proba(self.data)
+            self.proba.append(tmp_proba)
+            self.highest_prob[:, k] = [np.max(tmp_proba[i, :]) for i in range(tmp_proba.shape[0])]
 
 
     def best_k_plot(self):

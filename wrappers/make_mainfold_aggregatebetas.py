@@ -3,9 +3,9 @@ import pickle
 
 from cv_clustering.beta_aggregate import aggregate, get_proba
 
-input_files_dir = '/Users/lee_jollans/Projects/clustering_pilot/IXI/IXI_'
+input_files_dir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/act/IXI2_'
 cv_assignment_dir = "/Users/lee_jollans/Documents/GitHub/ML_in_python/export_251019/"
-savedir = ('/Users/lee_jollans/Projects/clustering_pilot/IXI/IXI_')
+savedir = ('/Users/lee_jollans/Projects/clustering_pilot/IXI2/null/IXI2_')
 
 # presets
 sets = [
@@ -56,7 +56,7 @@ for current_set in range(len(sets)):
             for subfold in range(4):
                 fold = (mainfold*4)+subfold
 
-                pkl_filename = (savedir + sets[current_set] + '_mod_' + str(fold))
+                pkl_filename = (savedir + sets[current_set] + '_mod_null_' + str(fold))
                 print(pkl_filename)
                 with open(pkl_filename, "rb") as file:
                     mod = pickle.load(file)
@@ -73,7 +73,7 @@ for current_set in range(len(sets)):
                 allbetas.append(np.append(np.expand_dims(i,axis=1).T,b,axis=0))
 
             aggregated_betas, all_weighted_betas = aggregate(allbetas)
-            ss=(savedir + sets[current_set] + '_aggregated_betas_k' + str(k) + '_' + str(mainfold) + '.csv')
+            ss=(savedir + sets[current_set] + '_aggregated_betas_k2' + str(k) + '_' + str(mainfold) + '.csv')
             with open(ss,mode='w') as file:
                 filewriter = csv.writer(file, delimiter=',')
                 filewriter.writerows(aggregated_betas)
@@ -92,10 +92,10 @@ for current_set in range(len(sets)):
             allargmax[:, current_set, k, mainfold] = argmaxY
             allproba[:, current_set, k, mainfold] = valmaxY
 
-pkl_filename = (savedir + 'all_labelsmain_sigmoid.pkl')
+pkl_filename = (savedir + 'all_labelsmain_sigmoid2.pkl')
 with open(pkl_filename, "wb") as file:
     pickle.dump(allargmax, file)
-pkl_filename = (savedir + 'all_probamain_sigmoid.pkl')
+pkl_filename = (savedir + 'all_probamain_sigmoid2.pkl')
 with open(pkl_filename, "wb") as file:
     pickle.dump(allproba, file)
 
