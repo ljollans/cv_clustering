@@ -17,6 +17,7 @@ from cv_clustering.loocv_assigmatcher_nov import (
 from cv_clustering.utils import coph_cor, rand_score_withnans, get_gradient_change, silhouette_score_withnans, get_pac
 import sys
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import BaggingClassifier
 from sklearn.model_selection import KFold
 
 sys.path.append(
@@ -127,52 +128,6 @@ class cluster:
             plt.xlabel("k")
         plt.show()
 
-    def aggregate_loocv(self):
-        A = self.all_clus_labels
-        A = A[self.train_index_sub, :, :]
-        A = A[:, :, self.train_index_sub]
-        (
-            self.cr,
-            self.pac,
-            self.cocluster_ratio,
-            self.uniqueness_pct,
-        ) = n_clus_retrieval_grid(A)
-        self.counts = [
-            len(np.where(self.cr == i)[0])
-            for i in range(np.max(self.cr).astype(int) + 1)
-        ]
-
-    def plot_cr_per_k(self):
-        fig = plt.figure()
-        for nk in range(self.nk):
-            plt.subplot(2, 4, nk + 1)
-            plt.imshow(self.cr[:, :, nk], vmin=np.min(self.cr), vmax=np.max(self.cr))
-            plt.colorbar()
-            plt.title(str(nk + 2) + " clusters")
-            plt.xlabel("co-cluster cut-off")
-            plt.xticks(np.arange(5), np.linspace(0.5, 1, 5))
-            plt.ylabel("cluster uniqueness cut-off")
-            plt.yticks(np.arange(5), np.linspace(0, 50, 5))
-        plt.show()
-
-    def plot_bic_pac_cr(self):
-        fig = plt.figure()
-        plot_these = ["bic", "pac", "counts"]
-        call_these = ["BIC", "PAC", "Frequency of k unique clusters"]
-        for p in range(len(plot_these)):
-            plt.subplot(1, 3, p + 1)
-            if p == 0:
-                plt.plot(np.nanmean(eval("self." + plot_these[p]), axis=0))
-            else:
-                plt.plot(eval("self." + plot_these[p]))
-            plt.title(call_these[p])
-            if p < 2:
-                plt.xticks(np.arange(self.nk), np.arange(self.nk) + 2)
-            else:
-                plt.xticks(np.arange(self.nk), np.arange(self.nk) + 1)
-            plt.xlabel("k")
-        plt.show()
-
     def calc_consensus_matrix(self):
         self.consensus_matrix = np.full(
             [self.nk, len(self.train_index_sub), len(self.train_index_sub)], np.nan
@@ -232,148 +187,89 @@ class cluster:
                 self.cluster_ensembles_labels[:, nclus],
             )
 
-    def consensus_labels_LJ(self):
-        self.consensus_labels = np.full([len(self.train_index_sub), self.nk], np.nan)
-        self.randall_consensus_labels = np.full([self.nk, len(self.train_index_sub)], np.nan)
-        self.silhouette_consensus_labels = np.full([self.nk], np.nan)
-
-        clusruns = self.all_clus_labels[self.train_index_sub, :, :]
-        clusruns = clusruns[:, :, self.train_index_sub]
-
-        for nclus in range(self.nk):
-            self.consensus_labels[:, nclus] = get_consensus_labels(
-                clusruns[:, nclus, :], nclus + 2, 0
-            )
-
-            self.randall_consensus_labels[nclus, :] = [
-                rand_score_withnans(
-                    self.consensus_labels[:, nclus], clusruns[i, nclus, :]
-                )
-                for i in range(clusruns.shape[0])
-            ]
-
-            self.silhouette_consensus_labels[nclus] = sklearn.metrics.silhouette_score(
-                self.data[self.train_index_sub, :],
-                self.consensus_labels[:, nclus],
-            )
-
-    def hierarchical_consensus(self):
-        self.agglom_labels = np.full([len(self.train_index_sub), self.nk], np.nan)
-        self.randall_agglom = np.full([self.nk, len(self.train_index_sub)], np.nan)
-        self.silhouette_agglom = np.full([self.nk], np.nan)
-
-        A = self.all_clus_labels[self.train_index_sub, :, :]
-        A = A[:, :, self.train_index_sub]
-        for nclus in range(self.nk):
-            aa = A[:, nclus, :].T
-            np.fill_diagonal(aa, -1)
-            clustering = AgglomerativeClustering(n_clusters=nclus + 2).fit(aa)
-            self.agglom_labels[:, nclus] = clustering.labels_
-
-            self.randall_agglom[nclus, :] = [
-                rand_score_withnans(
-                    self.agglom_labels[:, nclus], aa[:, i]
-                )
-                for i in range(len(self.train_index_sub))
-            ]
-
-            self.silhouette_agglom[nclus] = sklearn.metrics.silhouette_score(
-                self.data[self.train_index_sub, :],
-                self.agglom_labels[:, nclus],
-            )
-
-    def cluster_ensembles_match_betas(self):
-        self.iteration_assignments = []
-        self.beta_aggregate = []
-        self.beta_pre_aggregate = []
-        A = self.all_clus_labels[self.train_index_sub, :, :]
-        A = A[:, :, self.train_index_sub]
-        for nclus in range(self.nk):
-            assignments = infer_iteration_clusmatch(self.cluster_ensembles_labels[:, nclus], A[:, nclus, :])
-            self.iteration_assignments.append(assignments)
-
-            betas = self.betas[self.train_index_sub, nclus, :nclus + 2, :]
-            aggregated_betas, new_betas_array = collect_betas_for_corresponding_clus(assignments, betas)
-            self.beta_aggregate.append(aggregated_betas)
-            self.beta_pre_aggregate.append(new_betas_array)
-
     def cluster_ensembles_new_classification(self):
         kf = KFold(n_splits=5, shuffle=True, random_state=None)
         allbetas = []
         allitcpt = []
         X = self.data[self.train_index_sub,:]
         y = self.cluster_ensembles_labels
-        self.micro_f1 = np.full([self.nk,5],np.nan)
-        self.macro_f1 = np.full([self.nk,5],np.nan)
+        self.micro_f1 = np.full([self.nk],np.nan)
+        self.macro_f1 = np.full([self.nk],np.nan)
+        self.testlabels = np.full([len(y), self.nk],np.nan)
+        self.silhouette2_lvl2 = np.full([self.nk], np.nan)
+
+        nbag=20
 
         for nclus in range(self.nk):
             if nclus==0:
                 tmpbetas = np.full([self.data.shape[1],  5], np.nan)
+                tmpitcpt = np.full([5], np.nan)
             else:
                 tmpbetas = np.full([self.data.shape[1], nclus+2,5], np.nan)
-            tmpitcpt = np.full([nclus+2,5], np.nan)
+                tmpitcpt = np.full([nclus + 2, 5], np.nan)
+
             fold=-1
             for train_index, test_index in kf.split(X):
                 fold+=1
-                clf = LogisticRegression(random_state=0, multi_class='ovr').fit(X[train_index, :],
-                                                                                y[train_index, nclus],
-                                                                                )
-                testlabels = clf.predict(X[test_index,:])
-                self.micro_f1[nclus, fold] = sklearn.metrics.f1_score(y[test_index, nclus], testlabels, average='micro')
-                self.macro_f1[nclus, fold] = sklearn.metrics.f1_score(y[test_index, nclus], testlabels, average='macro')
+                clf = LogisticRegression(random_state=0, multi_class='ovr')
 
-                betas2add = clf.coef_.T
-                itcpt2add = clf.intercept_
+                bag_regr = BaggingClassifier(base_estimator=clf, n_estimators=nbag, max_samples=0.66, max_features=1.0,
+                                             bootstrap=True, bootstrap_features=False, oob_score=False,
+                                             warm_start=False,
+                                             n_jobs=None, random_state=None, verbose=0)
+                bag_regr.fit(X[train_index, :], y[train_index, nclus])
+                self.testlabels[test_index, nclus] = bag_regr.predict(X[test_index, :])
+
                 if nclus==0:
-                    tmpbetas[:,fold] = np.squeeze(betas2add)
+                    betas_all = np.full([X.shape[1], nbag], np.nan)
+                    itcpt_all = np.full([nbag], np.nan)
+                    for bag in range(nbag):
+                        betas_all[:, bag] = bag_regr.estimators_[bag].coef_[0]
+                        itcpt_all[bag] = bag_regr.estimators_[bag].intercept_
+                    tmpbetas[:,fold] = np.nanmedian(betas_all, axis=1)
+                    tmpitcpt[fold] = np.nanmedian(itcpt_all)
                 else:
-                    tmpbetas[:, :betas2add.shape[1], fold] = betas2add
-                tmpitcpt[:betas2add.shape[1], fold] = itcpt2add
+                    betas_all = np.full([X.shape[1], nclus+2, nbag], np.nan)
+                    itcpt_all = np.full([nclus+2, nbag], np.nan)
+                    for bag in range(nbag):
+                        for c in range(nclus+2):
+                            betas_all[:, c, bag] = bag_regr.estimators_[bag].coef_[c]
+                            itcpt_all[c, bag] = bag_regr.estimators_[bag].intercept_[c]
+                    tmpbetas[:, :nclus+2, fold] = np.nanmedian(betas_all, axis=2)
+                    tmpitcpt[:nclus+2, fold] = np.nanmedian(itcpt_all, axis=1)
+
+            self.micro_f1[nclus] = sklearn.metrics.f1_score(y[:, nclus], self.testlabels[:,nclus], average='micro')
+            self.macro_f1[nclus] = sklearn.metrics.f1_score(y[:, nclus], self.testlabels[:,nclus], average='macro')
             allbetas.append(tmpbetas)
             allitcpt.append(tmpitcpt)
+            self.silhouette2_lvl2[nclus] = sklearn.metrics.silhouette_score(X, self.testlabels[:,nclus])
+
         self.allbetas = allbetas
         self.allitcpt = allitcpt
 
+    def sf_class_probas(self):
+
         self.proba = []
         self.highest_prob = np.full([self.data.shape[0], self.nk], np.nan)
+        self.testset_prob = np.full([len(self.test_index_sub),self.nk], np.nan)
         for k in range(self.nk):
-            clf.intercept_ = np.nanmean(self.allitcpt[k], axis=1)
+            clf = LogisticRegression(random_state=0, multi_class='ovr')
+
             if k==0:
-                clf.coef_ = np.nanmean(self.allbetas[k], axis=1)
+                clf.coef_ = np.nanmedian(self.allbetas[k], axis=1)
+                clf.intercept_ = np.nanmedian(self.allitcpt[k])
             else:
-                clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
+                clf.coef_ = np.nanmedian(self.allbetas[k], axis=2)
+                clf.intercept_ = np.nanmedian(self.allitcpt[k], axis=1)
 
             clf_isotonic = CalibratedClassifierCV(clf,  method='sigmoid').fit(self.data[self.train_index_sub, :],
                                                                                     self.cluster_ensembles_labels[:, k])
 
 
-            clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
-
             tmp_proba = clf_isotonic.predict_proba(self.data)
             self.proba.append(tmp_proba)
             self.highest_prob[:,k] = [np.max(tmp_proba[i,:]) for i in range(tmp_proba.shape[0])]
-
-
-    def newclass_sil(self):
-        self.proba = []
-        self.highest_prob = np.full([self.data.shape[0], self.nk], np.nan)
-        for k in range(self.nk):
-            clf = LogisticRegression(random_state=0, multi_class='ovr')
-            clf.intercept_ = np.nanmean(self.allitcpt[k], axis=1)
-            if k == 0:
-                clf.coef_ = np.nanmean(self.allbetas[k], axis=1)
-            else:
-                clf.coef_ = np.nanmean(self.allbetas[k], axis=2)
-
-            clf_isotonic = CalibratedClassifierCV(clf, method='sigmoid').fit(self.data[self.train_index_sub, :],
-                                                                             self.cluster_ensembles_labels[:, k])
-
-            clf_isotonic.predict_proba(self.data[self.test_index_sub, :])
-
-            tmp_proba = clf_isotonic.predict_proba(self.data)
-            self.proba.append(tmp_proba)
-            self.highest_prob[:, k] = [np.max(tmp_proba[i, :]) for i in range(tmp_proba.shape[0])]
-
+            self.testset_prob[:,k] = self.highest_prob[self.test_index_sub,k]
 
     def best_k_plot(self):
         self.test_index_sub = np.where(

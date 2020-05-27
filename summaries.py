@@ -2,12 +2,15 @@ import pickle
 import numpy as np
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
+import sys
+sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
 
 # outcome metrics I want:
 
 # Level 1: LOOCV clustering
     # silhouette score
     # proportion of ambiguous clustering
+    # cluster sizes
 
 # Level 2: aggregated LOOCV solutions in each subfold
     # silhouette score after cluster ensemble
@@ -15,6 +18,7 @@ import matplotlib.pyplot as plt
     # micro f1 for new classification model
     # macro f1 for new classification model
     # test set classification probability
+    # cluster sizes
 
 # Level 3: aggregated subfold solutions in each mainfold
     # silhouette score
@@ -24,20 +28,21 @@ import matplotlib.pyplot as plt
 
 
 # analysis run info:
-#input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
-#modstr = '_mod_ctrl_'
-input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/null/MDDnull/MDD__'
-modstr = '_mod_null_'
+input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
+modstr = '_mod_ctrl_'
+#input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/null/MDDnull/MDD__'
+#modstr = '_mod_null_'
 
 sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
 n_cv_folds = 4
 n = 398
 n_k = 8
 
-do_level_1 = 0
+do_level_1 = 1
 do_level_2 = 1
 
-pac_lvl1_done = 0
+pac_lvl1_done = 1
+reclass_lvl2_done = 1
 
 ##################
 #    LEVEL 1     #
@@ -63,6 +68,7 @@ if do_level_1==1:
 
     silhouette_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n,n_k],np.nan)
     pac_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n_k],np.nan)
+    clussize_lvl1 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, n_k], np.nan)
     for s in range(len(sets)):
         for mf in range(n_cv_folds):
             for sf in range(n_cv_folds):
@@ -72,6 +78,7 @@ if do_level_1==1:
                     mod = pickle.load(f)
                 silhouette_lvl1[s,mf,sf,:,:]=mod.sil
                 pac_lvl1[s, mf, sf, :] = mod.pac
+
 
     with open(input_filedir + modstr + 'sil_pac_lvl1.pkl', 'wb') as f:
         pickle.dump([silhouette_lvl1,pac_lvl1],f)
@@ -84,11 +91,25 @@ if do_level_1==1:
 
 if do_level_2==1:
 
+    def calcreclass(filestr):
+        with open(filestr, "rb") as f:
+            mod = pickle.load(f)
+        mod.cluster_ensembles_new_classification()
+        mod.sf_class_probas()
+        with open(filestr, "wb") as f:
+            pickle.dump(mod,f)
+
+    if reclass_lvl2_done==0:
+        for s in range(len(sets)):
+            print(sets[s])
+            Parallel(n_jobs=8)(delayed(calcreclass)((input_filedir + sets[s] + modstr + str(fold))) for fold in range(16))
+
+
     silhouette1_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan)
     silhouette2_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
-    microf1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k,5], np.nan)
-    macrof1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k,5], np.nan)
-    testproba_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k,5],np.nan)
+    microf1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
+    macrof1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
+    testproba_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan)
     for s in range(len(sets)):
         for mf in range(n_cv_folds):
             for sf in range(n_cv_folds):
@@ -97,15 +118,13 @@ if do_level_2==1:
                 with open(filestr, "rb") as f:
                     mod = pickle.load(f)
                 silhouette1_lvl2[s,mf,sf,:]=mod.silhouette_cluster_ensembles
+                silhouette2_lvl2[s, mf, sf, :] = mod.silhouette2_lvl2
+                microf1_lvl2[s, mf, sf, :] = mod.micro_f1
+                macrof1_lvl2[s, mf, sf, :] = mod.macro_f1
+                testproba_lvl2[s, mf, sf, :] = np.nanmean(mod.testset_prob,axis=0)
 
-                microf1_lvl2[s, mf, sf, :, :] = mod.micro_f1
-                macrof1_lvl2[s, mf, sf, :, :] = mod.macro_f1
-
-                if hasattr(mod,'micro_f1'):
-                    microf1_lvl2[s, mf, sf, :, :] = mod.micro_f1
-                    macrof1_lvl2[s, mf, sf, :, :] = mod.macro_f1
-                else:
-                    print(s,mf,sf)
+    with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'wb') as f:
+        pickle.dump([silhouette1_lvl2,silhouette2_lvl2,microf1_lvl2,macrof1_lvl2,testproba_lvl2],f)
 
     fig = plt.figure(figsize=[20, 10])
     for s in range(len(sets)):
@@ -120,7 +139,7 @@ if do_level_2==1:
         plt.subplot(4, 3, s + 1);
         plt.title(sets[s])
         for mf in range(4):
-            plt.plot([np.nanmean(microf1_lvl2[s, mf, :, k]) for k in range(n_k)])
+            plt.plot([np.nanmean(silhouette2_lvl2[s, mf, :, k]) for k in range(n_k)])
     plt.show()
 
     fig = plt.figure(figsize=[20, 10])
@@ -128,5 +147,5 @@ if do_level_2==1:
         plt.subplot(4, 3, s + 1);
         plt.title(sets[s])
         for mf in range(4):
-            plt.plot([np.nanmean(macrof1_lvl2[s, mf, :, k]) for k in range(n_k)])
+            plt.plot([np.nanmean(testproba_lvl2[s, mf, :, k]) for k in range(n_k)])
     plt.show()
