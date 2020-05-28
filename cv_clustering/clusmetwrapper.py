@@ -220,6 +220,7 @@ class cluster:
                 bag_regr.fit(X[train_index, :], y[train_index, nclus])
                 self.testlabels[test_index, nclus] = bag_regr.predict(X[test_index, :])
 
+                uy=np.unique(y[train_index, nclus])
                 if nclus==0:
                     betas_all = np.full([X.shape[1], nbag], np.nan)
                     itcpt_all = np.full([nbag], np.nan)
@@ -232,9 +233,9 @@ class cluster:
                     betas_all = np.full([X.shape[1], nclus+2, nbag], np.nan)
                     itcpt_all = np.full([nclus+2, nbag], np.nan)
                     for bag in range(nbag):
-                        for c in range(nclus+2):
-                            betas_all[:, c, bag] = bag_regr.estimators_[bag].coef_[c]
-                            itcpt_all[c, bag] = bag_regr.estimators_[bag].intercept_[c]
+                        for c in range(len(uy)):
+                            betas_all[:, uy[c].astype(int), bag] = bag_regr.estimators_[bag].coef_[c]
+                            itcpt_all[uy[c].astype(int), bag] = bag_regr.estimators_[bag].intercept_[c]
                     tmpbetas[:, :nclus+2, fold] = np.nanmedian(betas_all, axis=2)
                     tmpitcpt[:nclus+2, fold] = np.nanmedian(itcpt_all, axis=1)
 

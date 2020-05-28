@@ -92,6 +92,37 @@ def combine_weighted_betas(allmses, all_subfold_betas, idx_fold, method):
     return all_weighted_betas, aggregated_betas
 
 
+def combine_forced_bestmatch(allmses, all_subfold_betas, idx_fold):
+    # bilateral matches with index fold
+    ncv = len(all_subfold_betas)
+    nclus = all_subfold_betas[0].shape[1]
+    nfeatures = all_subfold_betas[0].shape[0]
+    all_weighted_betas = np.full([nclus, nfeatures, ncv], np.nan)
+
+    for k in range(nclus):
+        all_weighted_betas[k, :, idx_fold] = all_subfold_betas[idx_fold][:, k]
+
+    for fold in range(ncv):
+        if fold != idx_fold:
+            mat = allmses[idx_fold,fold,:,:]
+            matches = min_match_matrix(mat)
+            for k in range(nclus):
+
+
+def min_match_matrix(mat):
+    matches = np.full([mat.shape[0], mat.shape[1]],np.nan)
+    ctr=0
+    while len(np.where(np.isfinite(mat.flatten()))[0])>0:
+        minf = np.where(mat==np.nanmin(mat))
+        ctr+=1
+        matches[minf[0],minf[1]] = ctr
+        mat[minf[0],:] = np.nan
+        mat[:,minf[1]] = np.nan
+    return matches
+
+
+
+
 def aggregate(all_subfold_betas, method):
     allmses, allranks, n_unique_fits, mutual_best_fit, mutual_best_fit_mse, matched_fit_mse = subfold_mse(
         all_subfold_betas)
