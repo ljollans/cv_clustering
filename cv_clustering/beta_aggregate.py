@@ -107,6 +107,9 @@ def combine_forced_bestmatch(allmses, all_subfold_betas, idx_fold):
             mat = allmses[idx_fold,fold,:,:]
             matches = min_match_matrix(mat)
             for k in range(nclus):
+                fmatch = np.where(np.isfinite(matches[k,:]))
+                all_weighted_betas[k,:,fold] = all_subfold_betas[fold][:,fmatch]
+    return all_weighted_betas
 
 
 def min_match_matrix(mat):

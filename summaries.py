@@ -4,6 +4,7 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
+from cv_clustering.mainfoldaggr import agglom
 
 # outcome metrics I want:
 
@@ -45,9 +46,11 @@ n_k = 8
 
 do_level_1 = 0
 do_level_2 = 1
+do_level_3 = 1
 
 pac_lvl1_done = 1
 reclass_lvl2_done = 0
+agglom_lvl3_done = 0
 
 ##################
 #    LEVEL 1     #
@@ -152,3 +155,12 @@ if do_level_2==1:
     with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'wb') as f:
         pickle.dump([silhouette1_lvl2,silhouette2_lvl2,microf1_lvl2,macrof1_lvl2,testproba_lvl2,clussize_CE_lvl2,clussize_test_lvl2],f)
 
+
+
+##################
+#    LEVEL 3     #
+##################
+
+if do_level_3 == 1:
+    if agglom_lvl3_done == 0:
+        agglom(input_filedir, modstr, sets, n_k, n_cv_folds)

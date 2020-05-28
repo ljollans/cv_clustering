@@ -243,7 +243,8 @@ class cluster:
             self.macro_f1[nclus] = sklearn.metrics.f1_score(y[:, nclus], self.testlabels[:,nclus], average='macro')
             allbetas.append(tmpbetas)
             allitcpt.append(tmpitcpt)
-            self.silhouette2_lvl2[nclus] = sklearn.metrics.silhouette_score(X, self.testlabels[:,nclus])
+            if len(np.unique(self.testlabels[:,nclus]))>1:
+                self.silhouette2_lvl2[nclus] = sklearn.metrics.silhouette_score(X, self.testlabels[:,nclus])
 
         self.allbetas = allbetas
         self.allitcpt = allitcpt
