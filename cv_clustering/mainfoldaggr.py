@@ -6,7 +6,10 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
 from sklearn.cluster import AgglomerativeClustering
-
+import matplotlib.pyplot as plt
+import pathlib
+from scipy.cluster.hierarchy import dendrogram
+from sklearn import preprocessing
 
 def aggr(current_set,mainfold,k,input_files_dir, savedir, cv_assignment, method, modstr='_mod_'):
     n = cv_assignment.shape[0]
@@ -65,16 +68,25 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
 
     nclus_agglom=np.full([len(sets),n_cv_folds,n_cv_folds,n_k],np.nan)
 
+    pathlib.Path(input_filedir + 'dendograms').mkdir(exist_ok=True)
+
     for s in range(len(sets)):
+        fig=plt.figure(figsize=[30,15])
+
         print(sets[s])
         filestr = (input_filedir + sets[s] + modstr + str(0))
         with open(filestr, "rb") as f:
             mod = pickle.load(f)
 
         for mf in range(n_cv_folds):
+
+            maintrain = np.where(np.isfinite(mod.cv_assignment[:, mf]))[0]
+            maintest = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
+
             for k in range(n_k):
 
                 X=np.empty((mod.data.shape[1],0),int)
+                IX=np.empty((0),int)
                 for sf in range(n_cv_folds):
                     fold=(mf*n_cv_folds)+sf
                     filestr=(input_filedir + sets[s] + modstr + str(fold))
@@ -84,13 +96,26 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
                     if k==0:
                         crit=np.nanmean(mod.allbetas[k],axis=1)
                         crit=np.array([crit,-crit]).T
+                        criti=np.nanmean(mod.allitcpt[k])
+                        criti = np.array([criti, -criti]).T
                     else:
                         crit=np.nanmean(mod.allbetas[k],axis=2)
+                        criti=np.nanmean(mod.allitcpt[k],axis=1)
 
                     X = np.append(X,crit, axis=1)
+                    IX = np.append(IX, criti)
+
+
+                # for now I decided to neither scale nor include the intercept as we are just looking at patterns.
+                # scaling would move what betas are positive vs. negative
+                # the intercept doesn;t add any information about the pattern, just the group sizes (?)
 
                 clustering = AgglomerativeClustering(compute_full_tree=True, distance_threshold=3, n_clusters=None,linkage='complete').fit(X.T)
                 nclus_agglom[s,mf,sf,k]=clustering.n_clusters_
+                # make dendogram to save
+                plt.subplot(n_cv_folds,n_k,(mf*n_k)+k+1)
+                plt.title('k=' + str(k+2))
+                plot_dendrogram(clustering, p=3)
 
                 clustering = AgglomerativeClustering(n_clusters=k+2, linkage='complete').fit(X.T)
 
@@ -102,10 +127,46 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
                         assig[f,cc]=clustering.labels_[ctr]
                         ctr+=1
                 for cc in range(k+2):
-                    allbetas[:,cc]=np.nanmean(X[:,np.where(clustering.labels_==cc)[0]], axis=1)
+                    allbetas[:, cc] = np.nanmean(X[:, np.where(clustering.labels_ == cc)[0]], axis=1)
 
-                with open((input_filedir + sets[s] + 'aggr_betas.pkl'), 'wb') as f:
-                    pickle.dump([X,clustering,assig,allbetas],f)
+                # not we have the betas -- apply and get probas
+                newY1 = mod.data[maintrain, :].dot(allbetas)
+                argmaxY = np.array([np.where(newY1[i, :] == np.max(newY1[i, :]))[0][0] for i in range(newY1.shape[0])])
+                newYtest = mod.data[maintest, :].dot(allbetas)
+                argmaxYtest = np.array([np.where(newYtest[i, :] == np.max(newYtest[i, :]))[0][0] for i in range(newYtest.shape[0])])
+
+                tmp_trainproba, tmp_testproba = get_proba(mod.data[maintrain, :], argmaxY, allbetas, mod.data[maintest, :])
+                argmaxY2 = np.array([np.where(tmp_trainproba[i, :] == np.max(tmp_trainproba[i, :]))[0][0] for i in range(tmp_trainproba.shape[0])])
+                argmaxYtest2 = np.array([np.where(tmp_testproba[i, :] == np.max(tmp_testproba[i, :]))[0][0] for i in range(tmp_testproba.shape[0])])
+
+
+                with open((input_filedir + sets[s] + '_aggr_betas_k' + str(k) + '_mf' + str(mf) + '.pkl'), 'wb') as f:
+                    pickle.dump([X,clustering,assig,allbetas, tmp_testproba, argmaxYtest, argmaxYtest2],f)
+
+        plt.savefig(input_filedir + 'dendograms/' + sets[s] + '_clus_dendograms.png')
+
 
     with open((input_filedir + 'nclus_agglom.pkl'), 'wb') as f:
-        pickle.dump(nclus_agglom, f)
+        pickle.dump([nclus_agglom], f)
+
+
+def plot_dendrogram(model, **kwargs):
+    # Create linkage matrix and then plot the dendrogram
+
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    linkage_matrix = np.column_stack([model.children_, model.distances_,
+                                      counts]).astype(float)
+
+    # Plot the corresponding dendrogram
+    dendrogram(linkage_matrix, **kwargs)

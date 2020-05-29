@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
 from cv_clustering.mainfoldaggr import agglom
+import os
+from sklearn.metrics import silhouette_samples, silhouette_score
 
 # outcome metrics I want:
 
@@ -29,28 +31,29 @@ from cv_clustering.mainfoldaggr import agglom
 
 
 # analysis run info:
-#input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
-#modstr = '_mod_ctrl_'
+input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
+modstr = '_mod_ctrl_'
 #input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/null/MDDnull/MDD__'
 #modstr = '_mod_null_'
 #input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/null2/IXI2_'
 #modstr = '_mod_null_'
-input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/act/IXI2_'
-modstr = '_mod_'
+#input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/act/IXI2_'
+#modstr = '_mod_'
 
 sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
 n_cv_folds = 4
-#n = 398
-n = 544
+n = 398
+#n = 544
 n_k = 8
 
 do_level_1 = 0
-do_level_2 = 1
+do_level_2 = 0
 do_level_3 = 1
 
 pac_lvl1_done = 1
-reclass_lvl2_done = 0
+reclass_lvl2_done = 1
 agglom_lvl3_done = 0
+moveon=0
 
 ##################
 #    LEVEL 1     #
@@ -109,7 +112,7 @@ if do_level_2==1:
     def calcreclass(filestr):
         with open(filestr, "rb") as f:
             mod = pickle.load(f)
-        if hasattr(mod,'silhouette2_lvl2'):
+        if hasattr(mod,'testset_prob'):
             pass
         else:
             mod.cluster_ensembles_new_classification()
@@ -164,3 +167,34 @@ if do_level_2==1:
 if do_level_3 == 1:
     if agglom_lvl3_done == 0:
         agglom(input_filedir, modstr, sets, n_k, n_cv_folds)
+
+    if moveon==1:
+
+        silhouette_dot_lvl3 = np.full([len(sets), n_cv_folds, n_k], np.nan)
+        silhouette_prob_lvl3 = np.full([len(sets), n_cv_folds, n_k], np.nan)
+        testproba_best_lvl3 = np.full([len(sets), n_cv_folds, n_k], np.nan)
+        testproba_best_perclus_lvl3 = np.full([len(sets), n_cv_folds, n_k, n_k+2], np.nan)
+        clussize_dot_lvl3 = np.full([len(sets), n_cv_folds, n_k, n_k+2], np.nan)
+        clussize_prob_lvl3 = np.full([len(sets), n_cv_folds, n_k, n_k+2], np.nan)
+
+        for s in range(12):
+            filestr = (input_filedir + sets[s] + modstr + str(0))
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+            for mf in range(n_cv_folds):
+                maintrain = np.where(np.isfinite(mod.cv_assignment[:, mf]))[0]
+                maintest = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
+                for k in range(n_k):
+                    with open((input_filedir + sets[s] + '_aggr_betas_k' + str(k) + '_mf' + str(mf) + '.pkl'),'rb') as f:
+                        [X, clustering, assig, allbetas, tmp_testproba, argmaxYdot, argmaxYprob] = pickle.load(f)
+                    silhouette_dot_lvl3[s,mf,k] = silhouette_score(mod.data[maintest], argmaxYdot)
+                    silhouette_prob_lvl3[s, mf, k] = silhouette_score(mod.data[maintest], argmaxYprob)
+                    topprob = np.array([np.max(tmp_testproba[i,:]) for i in range(tmp_testproba.shape[0])])
+                    testproba_best_lvl3[s,mf,k] = np.nanmean(topprob)
+                    for c in range(k+1):
+                        testproba_best_perclus_lvl3[s,mf,k,c]=np.nanmean(topprob[np.where(argmaxYprob==c)[0]])
+                        clussize_dot_lvl3[s,mf,k,c]=len(np.where(argmaxYdot==c)[0])
+                        clussize_prob_lvl3[s,mf,k,c]=len(np.where(argmaxYprob==c)[0])
+
+
+
