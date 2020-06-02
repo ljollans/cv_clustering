@@ -110,7 +110,7 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
                 # scaling would move what betas are positive vs. negative
                 # the intercept doesn;t add any information about the pattern, just the group sizes (?)
 
-                clustering = AgglomerativeClustering(compute_full_tree=True, distance_threshold=3, n_clusters=None,linkage='complete').fit(X.T)
+                clustering = AgglomerativeClustering(compute_full_tree=True, distance_threshold=3, n_clusters=None,linkage='ward').fit(X.T)
                 nclus_agglom[s,mf,sf,k]=clustering.n_clusters_
                 # make dendogram to save
                 plt.subplot(n_cv_folds,n_k,(mf*n_k)+k+1)
@@ -148,6 +148,65 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
 
     with open((input_filedir + 'nclus_agglom.pkl'), 'wb') as f:
         pickle.dump([nclus_agglom], f)
+
+
+def aggr4comp(input_filedir, modstr, sets, n_k, n_cv_folds):
+
+
+    for s in range(len(sets)):
+
+        print(sets[s])
+        filestr = (input_filedir + sets[s] + modstr + str(0))
+        with open(filestr, "rb") as f:
+            mod = pickle.load(f)
+
+        for mainfold in range(n_cv_folds):
+
+            maintrain = np.where(np.isfinite(mod.cv_assignment[:, mainfold]))[0]
+            maintest = np.where(np.isnan(mod.cv_assignment[:, mainfold]))[0]
+
+            for k in range(n_k):
+
+                allbetas=[]
+
+                for subfold in range(4):
+                    fold = (mainfold*4)+subfold
+
+                    filestr = (input_filedir + sets[s] + modstr + str(fold))
+                    with open(filestr, "rb") as f:
+                        mod = pickle.load(f)
+
+                    if k==0:
+                        b=np.nanmean(mod.allbetas[k],axis=1)
+                        b=np.array([b,-b]).T
+                        i=np.nanmean(mod.allitcpt[k])
+                        i = np.array([i, -i]).T
+                    else:
+                        b=np.nanmean(mod.allbetas[k],axis=2)
+                        i=np.nanmean(mod.allitcpt[k],axis=1)
+
+                    allbetas.append(np.append(np.expand_dims(i,axis=1).T,b,axis=0))
+                aggregated_betas, all_weighted_betas = aggregate(allbetas, 0)
+
+                # not we have the betas -- apply and get probas
+                newY1 = mod.data[maintrain, :].dot(aggregated_betas[1:,:])
+                argmaxY = np.array([np.where(newY1[i, :] == np.max(newY1[i, :]))[0][0] for i in range(newY1.shape[0])])
+                newYtest = mod.data[maintest, :].dot(aggregated_betas[1:,:])
+                argmaxYtest = np.array(
+                    [np.where(newYtest[i, :] == np.max(newYtest[i, :]))[0][0] for i in range(newYtest.shape[0])])
+
+                tmp_trainproba, tmp_testproba = get_proba(mod.data[maintrain, :], argmaxY, aggregated_betas[1:,:],
+                                                          mod.data[maintest, :])
+                argmaxY2 = np.array([np.where(tmp_trainproba[i, :] == np.max(tmp_trainproba[i, :]))[0][0] for i in
+                                     range(tmp_trainproba.shape[0])])
+                argmaxYtest2 = np.array([np.where(tmp_testproba[i, :] == np.max(tmp_testproba[i, :]))[0][0] for i in
+                                         range(tmp_testproba.shape[0])])
+
+                with open((input_filedir + sets[s] + '_aggr_00_betas_k' + str(k) + '_mf' + str(mainfold) + '.pkl'), 'wb') as f:
+                    pickle.dump([aggregated_betas, all_weighted_betas, tmp_testproba, argmaxYtest, argmaxYtest2], f)
+
+
+
 
 
 def plot_dendrogram(model, **kwargs):
