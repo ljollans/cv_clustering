@@ -41,6 +41,23 @@ def subfold_mse(all_subfold_betas):
 
     return allmses, allranks, n_unique_fits, mutual_best_fit, mutual_best_fit_mse, matched_fit_mse
 
+def assigfromproba(probs, thr=10):
+    assignment = np.full([probs.shape[0]],np.nan)
+    assignment10= np.full([probs.shape[0]],0)
+    likelihood = np.full([probs.shape[0]],np.nan)
+    for i in range(probs.shape[0]):
+        crit = probs[i,:]
+        if len(np.where(np.isfinite(crit))[0])>0:
+            likelihood[i] = np.nanmax(crit)
+            assignment[i]=np.where(crit==np.nanmax(crit))[0]+1
+            # check whether the highest probability is 10% above the average given the number of classes
+            avgcrit=1/probs.shape[1]
+            if np.nanmax(crit)>(avgcrit+(avgcrit/thr)):
+                # now check whether highest probability is 10% higher than any other
+                threshval = np.nanmax(crit)-np.nanmax(crit)/thr
+                if len(np.where(crit>threshval)[0])==1:
+                    assignment10[i]=assignment[i]
+    return assignment, likelihood, assignment10
 
 def vector_mse(a, b):
     scaler = StandardScaler()

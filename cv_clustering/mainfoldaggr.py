@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import csv
-from cv_clustering.beta_aggregate import aggregate, get_proba
+from cv_clustering.beta_aggregate import aggregate, get_proba, assigfromproba
 from sklearn.metrics import silhouette_samples, silhouette_score
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
@@ -148,6 +148,119 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
 
     with open((input_filedir + 'nclus_agglom.pkl'), 'wb') as f:
         pickle.dump([nclus_agglom], f)
+
+
+def agglom_best_k_per_sf(input_filedir, modstr, input_filedir_null, modstr_null, sets, setsize, n_cv_folds, n):
+
+    with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'rb') as f:
+        [silhouette1_lvl2, silhouette2_lvl2, microf1_lvl2, macrof1_lvl2, testproba_lvl2, clussize_CE_lvl2,
+         clussize_test_lvl2] = pickle.load(f)
+
+    with open(input_filedir_null + modstr_null + 'sil_f1_prob_lvl2.pkl', 'rb') as f:
+        [silhouette1_lvl2n, silhouette2_lvl2n, microf1_lvl2n, macrof1_lvl2n, testproba_lvl2n, clussize_CE_lvl2n,
+         clussize_test_lvl2n] = pickle.load(f)
+
+    # get best k for each subfold based on difference from null for silhouette2_lvl2
+    bestk_mdd = np.full([len(sets), n_cv_folds, n_cv_folds], np.nan)
+    allbetas_sfk = [None] * len(sets)
+    final_k=np.full([len(sets), n_cv_folds], np.nan)
+
+    silmaintrain = np.full([len(sets), n_cv_folds], np.nan)
+    silmaintest = np.full([len(sets), n_cv_folds], np.nan)
+
+    train_clus_assig = np.full([n,len(sets), n_cv_folds], np.nan)
+    test_clus_assig = np.full([n, len(sets), n_cv_folds], np.nan)
+    train_clus_assig25 = np.full([n, len(sets), n_cv_folds], np.nan)
+    test_clus_assig25 = np.full([n, len(sets), n_cv_folds], np.nan)
+    train_clus_prob = np.full([n, len(sets), n_cv_folds], np.nan)
+    test_clus_prob = np.full([n, len(sets), n_cv_folds], np.nan)
+
+    for s in range(len(sets)):
+        allbetas_sfk[s] = []
+        print(sets[s])
+        fig = plt.figure(figsize=[20, 4])
+        for mf in range(n_cv_folds):
+            X = np.empty((setsize[s], 0), int)
+
+            for sf in range(n_cv_folds):
+
+                fold = (mf * n_cv_folds) + sf
+                filestr = (input_filedir + sets[s] + modstr + str(fold))
+                with open(filestr, "rb") as f:
+                    mod = pickle.load(f)
+
+                # identify best k for this subfold
+                act_crit = silhouette2_lvl2[s, mf, sf, :]
+                null_crit = silhouette2_lvl2n[s, mf, sf, :]
+                critd = act_crit - null_crit
+                maxcrit = np.nanmax(critd)
+                maxcritwhere = np.where(critd == maxcrit)[0]
+                bestk_mdd[s, mf, sf] = maxcritwhere
+
+                # append the betas to X
+                if bestk_mdd[s, mf, sf] == 0:
+                    crit = np.nanmean(mod.allbetas[bestk_mdd[s, mf, sf].astype(int)], axis=1)
+                    crit = np.array([crit, -crit]).T
+                    criti = np.nanmean(mod.allitcpt[bestk_mdd[s, mf, sf].astype(int)])
+                    criti = np.array([criti, -criti]).T
+                else:
+                    crit = np.nanmean(mod.allbetas[bestk_mdd[s, mf, sf].astype(int)], axis=2)
+                    criti = np.nanmean(mod.allitcpt[bestk_mdd[s, mf, sf].astype(int)], axis=1)
+
+                X = np.append(X, crit, axis=1)
+
+            # cluster all subfold betas
+            clustering = AgglomerativeClustering(compute_full_tree=True, distance_threshold=3, n_clusters=None,
+                                                 linkage='ward').fit(X.T)
+            nk = len(np.unique(clustering.labels_))
+            final_k[s,mf]=nk
+
+            # plot dendogram for later reference
+            plt.subplot(1, n_cv_folds, mf + 1)
+            plot_dendrogram(clustering, p=3)
+            plt.title((sets[s], str(mf), str(len(np.unique(clustering.labels_)))))
+
+            # average the betas for each glob
+            allbetas = np.full([X.shape[0], nk], np.nan)
+            for cc in range(nk):
+                allbetas[:, cc] = np.nanmean(X[:, np.where(clustering.labels_ == cc)[0]], axis=1)
+            allbetas_sfk[s].append(allbetas)
+
+            # get cluster assignments
+            maintest = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
+            maintrain = np.where(np.isfinite(mod.cv_assignment[:, mf]))[0]
+
+            newY1 = mod.data[maintrain, :].dot(allbetas_sfk[s][mf])
+            argmaxYtrain = np.array([np.where(newY1[i, :] == np.max(newY1[i, :]))[0][0] for i in range(newY1.shape[0])])
+            tmp_trainproba, tmp_testproba = get_proba(mod.data[maintrain, :], argmaxYtrain, allbetas_sfk[s][mf],mod.data[maintest, :])
+            if tmp_trainproba.shape[1] < newY1.shape[1]:
+                newtmptrainproba = np.zeros(shape=[tmp_trainproba.shape[0], newY1.shape[1]])
+                newtmptestproba = np.zeros(shape=[tmp_testproba.shape[0], newY1.shape[1]])
+                u = -1
+                for b in range(newY1.shape[1]):
+                    if len(np.unique(allbetas_sfk[s][mf][:, b])) > 1:
+                        u += 1
+                        newtmptrainproba[:, b] = tmp_trainproba[:, u]
+                        newtmptestproba[:, b] = tmp_testproba[:, u]
+                tmp_trainproba = newtmptrainproba
+                tmp_testproba = newtmptestproba
+
+            assignment_train, likelihood_train, assignment25_train = assigfromproba(tmp_trainproba, 4)
+            assignment_test, likelihood_test, assignment25_test = assigfromproba(tmp_testproba, 4)
+            silmaintrain[s, mf] = silhouette_score(mod.data[maintrain, :], assignment_train)
+            silmaintest[s, mf] = silhouette_score(mod.data[maintest, :], assignment_test)
+
+            train_clus_assig[maintrain,s,mf] = assignment_train
+            test_clus_assig[maintest,s,mf] = assignment_test
+            train_clus_prob[maintrain,s,mf] = likelihood_train
+            test_clus_prob[maintest,s,mf] = likelihood_test
+            train_clus_assig25[maintrain,s,mf] = assignment25_train
+            test_clus_assig25[maintest,s,mf] = assignment25_test
+
+        plt.savefig(input_filedir + 'dendograms/mf_bestkaggr_' + sets[s] + '_clus_dendograms.png')
+    with open((input_filedir + 'aggr_betas_best_sf_k.pkl'), 'wb') as f:
+        pickle.dump([bestk_mdd,final_k,allbetas_sfk,silmaintrain,silmaintest,train_clus_assig,test_clus_assig,train_clus_prob,test_clus_prob,train_clus_assig25,test_clus_assig25], f)
+
 
 
 def aggr4comp(input_filedir, modstr, sets, n_k, n_cv_folds):
