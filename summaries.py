@@ -53,7 +53,7 @@ for useme in range(4):
 
     do_level_1 = 0
     do_level_2 = 0
-    do_level_3 = 1
+    do_level_3 = 0
 
     pac_lvl1_done = 1
     reclass_lvl2_done = 1
