@@ -36,6 +36,7 @@ from scipy.cluster.hierarchy import dendrogram
 
 # Level 4: commonality across mainfold solutions
 
+
 mdd_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
 mdd_modstr = '_mod_ctrl_'
 mdd_null_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/null/MDDnull/MDD__'
@@ -45,133 +46,146 @@ ixi_modstr = '_mod_'
 ixi_null_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/null2/IXI2_'
 ixi_null_modstr = '_mod_null_'
 
+for use in [1,2,3,4]:
+    if use==1:
+        input_filedir = mdd_input_filedir
+        modstr = mdd_modstr
+    elif use==2:
+        input_filedir = mdd_null_input_filedir
+        modstr = mdd_null_modstr
+    elif use==3:
+        input_filedir = ixi_input_filedir
+        modstr = ixi_modstr
+    elif use==4:
+        input_filedir = ixi_null_input_filedir
+        modstr=ixi_null_modstr
+    input_filedir_null=mdd_null_input_filedir
+    modstr_null=mdd_null_modstr
 
-input_filedir = mdd_input_filedir
-modstr=mdd_modstr
-input_filedir_null=mdd_null_input_filedir
-modstr_null=mdd_null_modstr
+    sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
+    setsize=np.array([82,82,150,84,84,154,82,82,150,84,84,154])
+    n_cv_folds = 4
+    #n = 398
+    n = 544
+    n_k = 8
 
-sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
-setsize=np.array([82,82,150,84,84,154,82,82,150,84,84,154])
-n_cv_folds = 4
-#n = 398
-n = 544
-n_k = 8
+    do_level_1 = 0
+    do_level_2 = 1
+    do_level_3 = 0
+    do_level_35 = 0
 
-do_level_1 = 0
-do_level_2 = 0
-do_level_3 = 0
-do_level_35 = 1
+    pac_lvl1_done = 1
+    reclass_lvl2_done = 1
+    agglom_lvl3_done = 1
+    aggr00_lvl3_done = 1
+    moveon=1
+    best_k_agglom_done=1
 
-pac_lvl1_done = 1
-reclass_lvl2_done = 1
-agglom_lvl3_done = 1
-aggr00_lvl3_done = 1
-moveon=1
-best_k_agglom_done=0
+    ##################
+    #    LEVEL 1     #
+    ##################
 
-##################
-#    LEVEL 1     #
-##################
+    if do_level_1==1:
+        # calculate pac
+        def calcpac(filestr):
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+            if hasattr(mod,'pac'):
+                pass
+            else:
+                mod.calc_consensus_matrix()
+                mod.get_pac()
+                with open(filestr, "wb") as f:
+                    pickle.dump(mod,f)
 
-if do_level_1==1:
-    # calculate pac
-    def calcpac(filestr):
-        with open(filestr, "rb") as f:
-            mod = pickle.load(f)
-        if hasattr(mod,'pac'):
-            pass
-        else:
-            mod.calc_consensus_matrix()
-            mod.get_pac()
-            with open(filestr, "wb") as f:
-                pickle.dump(mod,f)
+        if pac_lvl1_done==0:
+            for s in range(len(sets)):
+                print(sets[s])
+                Parallel(n_jobs=8)(delayed(calcpac)((input_filedir + sets[s] + modstr + str(fold))) for fold in range(16))
 
-    if pac_lvl1_done==0:
+        clussizeedges=np.arange(0,n,10)
+        silhouette_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n,n_k],np.nan)
+        pac_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n_k],np.nan)
+        clussize_lvl1 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k,len(clussizeedges)-1], np.nan)
         for s in range(len(sets)):
-            print(sets[s])
-            Parallel(n_jobs=8)(delayed(calcpac)((input_filedir + sets[s] + modstr + str(fold))) for fold in range(16))
+            for mf in range(n_cv_folds):
+                for sf in range(n_cv_folds):
+                    fold=(mf*n_cv_folds)+sf
+                    filestr=(input_filedir + sets[s] + modstr + str(fold))
+                    with open(filestr, "rb") as f:
+                        mod = pickle.load(f)
+                    silhouette_lvl1[s,mf,sf,:,:]=mod.sil
+                    pac_lvl1[s, mf, sf, :] = mod.pac
+                    for k in range(n_k):
+                        tmp=np.full([len(mod.train_index_sub),k+2],np.nan)
+                        for ll in range(len(mod.train_index_sub)):
+                            for k2 in range(k+2):
+                                tmp[ll,k2] = len(np.where(mod.all_clus_labels[mod.train_index_sub[ll],k,:]==k2)[0])
+                        h,b=np.histogram(tmp.flatten(), clussizeedges)
+                        clussize_lvl1[s,mf,sf,k,:]=h
 
-    clussizeedges=np.arange(0,n,10)
-    silhouette_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n,n_k],np.nan)
-    pac_lvl1 = np.full([len(sets),n_cv_folds,n_cv_folds,n_k],np.nan)
-    clussize_lvl1 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k,len(clussizeedges)-1], np.nan)
-    for s in range(len(sets)):
-        for mf in range(n_cv_folds):
-            for sf in range(n_cv_folds):
-                fold=(mf*n_cv_folds)+sf
-                filestr=(input_filedir + sets[s] + modstr + str(fold))
-                with open(filestr, "rb") as f:
-                    mod = pickle.load(f)
-                silhouette_lvl1[s,mf,sf,:,:]=mod.sil
-                pac_lvl1[s, mf, sf, :] = mod.pac
-                for k in range(n_k):
-                    tmp=np.full([len(mod.train_index_sub),k+2],np.nan)
-                    for ll in range(len(mod.train_index_sub)):
+        with open(input_filedir + modstr + 'sil_pac_lvl1.pkl', 'wb') as f:
+            pickle.dump([silhouette_lvl1,pac_lvl1, clussize_lvl1],f)
+
+
+
+    ##################
+    #    LEVEL 2     #
+    ##################
+
+    if do_level_2==1:
+
+        def calcreclass(filestr):
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+            if hasattr(mod,'testset_prob'):
+                pass
+            else:
+                mod.cluster_ensembles_new_classification()
+                mod.sf_class_probas()
+                with open(filestr, "wb") as f:
+                    pickle.dump(mod,f)
+
+        if reclass_lvl2_done==0:
+            for s in range(len(sets)):
+                print(sets[s])
+                Parallel(n_jobs=8)(delayed(calcreclass)((input_filedir + sets[s] + modstr + str(fold))) for fold in range(16))
+
+        clussizeedges = np.arange(0, n, 10)
+        silhouette1_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan) # for whole training set after cluster ensembles aggregation of loocv
+        silhouette2_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan) # for test set after they're assigned using the new classifier
+        microf1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
+        macrof1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
+        testproba_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan)
+        certedges = np.arange(0,1.1,.1)
+        testprobadist_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, 10], np.nan)
+
+        clussize_CE_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, len(clussizeedges) - 1], np.nan)
+        clussize_test_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, len(clussizeedges) - 1], np.nan)
+        for s in range(len(sets)):
+            for mf in range(n_cv_folds):
+                for sf in range(n_cv_folds):
+                    fold=(mf*n_cv_folds)+sf
+                    filestr=(input_filedir + sets[s] + modstr + str(fold))
+                    with open(filestr, "rb") as f:
+                        mod = pickle.load(f)
+                    silhouette1_lvl2[s,mf,sf,:]=mod.silhouette_cluster_ensembles
+                    silhouette2_lvl2[s, mf, sf, :] = mod.silhouette2_lvl2
+                    microf1_lvl2[s, mf, sf, :] = mod.micro_f1
+                    macrof1_lvl2[s, mf, sf, :] = mod.macro_f1
+                    testproba_lvl2[s, mf, sf, :] = np.nanmean(mod.testset_prob,axis=0)
+                    for k in range(n_k):
+                        tmp=np.full([k+2,2],np.nan)
                         for k2 in range(k+2):
-                            tmp[ll,k2] = len(np.where(mod.all_clus_labels[mod.train_index_sub[ll],k,:]==k2)[0])
-                    h,b=np.histogram(tmp.flatten(), clussizeedges)
-                    clussize_lvl1[s,mf,sf,k,:]=h
-
-    with open(input_filedir + modstr + 'sil_pac_lvl1.pkl', 'wb') as f:
-        pickle.dump([silhouette_lvl1,pac_lvl1, clussize_lvl1],f)
-
+                            tmp[k2, 0] = len(np.where(mod.cluster_ensembles_labels[:,k]==k2)[0])
+                            tmp[k2, 1] = len(np.where(mod.testlabels[:, k] == k2)[0])
+                        clussize_CE_lvl2[s, mf, sf, k,:],b=np.histogram(tmp[:,0], clussizeedges)
+                        clussize_test_lvl2[s, mf, sf, k,:],b=np.histogram(tmp[:,1], clussizeedges)
+                        testprobadist_lvl2[s, mf, sf, k,:],b=np.histogram(mod.testset_prob[:,k], certedges)
 
 
-##################
-#    LEVEL 2     #
-##################
-
-if do_level_2==1:
-
-    def calcreclass(filestr):
-        with open(filestr, "rb") as f:
-            mod = pickle.load(f)
-        if hasattr(mod,'testset_prob'):
-            pass
-        else:
-            mod.cluster_ensembles_new_classification()
-            mod.sf_class_probas()
-            with open(filestr, "wb") as f:
-                pickle.dump(mod,f)
-
-    if reclass_lvl2_done==0:
-        for s in range(len(sets)):
-            print(sets[s])
-            Parallel(n_jobs=8)(delayed(calcreclass)((input_filedir + sets[s] + modstr + str(fold))) for fold in range(16))
-
-    clussizeedges = np.arange(0, n, 10)
-    silhouette1_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan) # for whole training set after cluster ensembles aggregation of loocv
-    silhouette2_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan) # for test set after they're assigned using the new classifier
-    microf1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
-    macrof1_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k], np.nan)
-    testproba_lvl2 = np.full([len(sets),n_cv_folds,n_cv_folds, n_k],np.nan)
-
-    clussize_CE_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, len(clussizeedges) - 1], np.nan)
-    clussize_test_lvl2 = np.full([len(sets), n_cv_folds, n_cv_folds, n_k, len(clussizeedges) - 1], np.nan)
-    for s in range(len(sets)):
-        for mf in range(n_cv_folds):
-            for sf in range(n_cv_folds):
-                fold=(mf*n_cv_folds)+sf
-                filestr=(input_filedir + sets[s] + modstr + str(fold))
-                with open(filestr, "rb") as f:
-                    mod = pickle.load(f)
-                silhouette1_lvl2[s,mf,sf,:]=mod.silhouette_cluster_ensembles
-                silhouette2_lvl2[s, mf, sf, :] = mod.silhouette2_lvl2
-                microf1_lvl2[s, mf, sf, :] = mod.micro_f1
-                macrof1_lvl2[s, mf, sf, :] = mod.macro_f1
-                testproba_lvl2[s, mf, sf, :] = np.nanmean(mod.testset_prob,axis=0)
-                for k in range(n_k):
-                    tmp=np.full([k+2,2],np.nan)
-                    for k2 in range(k+2):
-                        tmp[k2, 0] = len(np.where(mod.cluster_ensembles_labels[:,k]==k2)[0])
-                        tmp[k2, 1] = len(np.where(mod.testlabels[:, k] == k2)[0])
-                    clussize_CE_lvl2[s, mf, sf, k,:],b=np.histogram(tmp[:,0], clussizeedges)
-                    clussize_test_lvl2[s, mf, sf, k,:],b=np.histogram(tmp[:,1], clussizeedges)
-
-
-    with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'wb') as f:
-        pickle.dump([silhouette1_lvl2,silhouette2_lvl2,microf1_lvl2,macrof1_lvl2,testproba_lvl2,clussize_CE_lvl2,clussize_test_lvl2],f)
+        with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'wb') as f:
+            pickle.dump([silhouette1_lvl2,silhouette2_lvl2,microf1_lvl2,macrof1_lvl2,testproba_lvl2,testprobadist_lvl2,clussize_CE_lvl2,clussize_test_lvl2],f)
 
 
 
