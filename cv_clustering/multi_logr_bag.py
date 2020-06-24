@@ -173,7 +173,7 @@ def multi_logr_bagr(nboot, yx, n_groups, n_cv_folds, print_output):
     )
 
 
-def new_multiclassifCV(X, y, ncv, nbag):
+def new_multiclassifCV(X, y, ncv, nbag, nclus):
     kf = KFold(n_splits=ncv, shuffle=True, random_state=None)
     allbetas = []
     allitcpt = []
@@ -204,23 +204,24 @@ def new_multiclassifCV(X, y, ncv, nbag):
                                          n_jobs=None, random_state=None, verbose=0)
             bag_regr.fit(X[train_index, :], y[train_index])
 
-            if len(ug) == 2:
+            uy = np.unique(y[train_index])
+            if nclus == 0:
                 betas_all = np.full([X.shape[1], nbag], np.nan)
                 itcpt_all = np.full([nbag], np.nan)
                 for bag in range(nbag):
                     betas_all[:, bag] = bag_regr.estimators_[bag].coef_[0]
                     itcpt_all[bag] = bag_regr.estimators_[bag].intercept_
-                meanbetas[fold, :] = np.nanmedian(betas_all, axis=1)
+                meanbetas[:, fold] = np.nanmedian(betas_all, axis=1)
                 meanitcpt[fold] = np.nanmedian(itcpt_all)
             else:
-                betas_all = np.full([X.shape[1], len(ug), nbag], np.nan)
-                itcpt_all = np.full([len(ug), nbag], np.nan)
+                betas_all = np.full([X.shape[1], nclus + 2, nbag], np.nan)
+                itcpt_all = np.full([nclus + 2, nbag], np.nan)
                 for bag in range(nbag):
-                    for c in range(len(ug)):
-                        betas_all[:, c, bag] = bag_regr.estimators_[bag].coef_[c]
-                        itcpt_all[c, bag] = bag_regr.estimators_[bag].intercept_[c]
-                meanbetas[fold, :, :] = np.nanmedian(betas_all, axis=2)
-                meanitcpt[fold, :] = np.nanmedian(itcpt_all, axis=1)
+                    for c in range(len(uy)):
+                        betas_all[:, uy[c].astype(int), bag] = bag_regr.estimators_[bag].coef_[c]
+                        itcpt_all[uy[c].astype(int), bag] = bag_regr.estimators_[bag].intercept_[c]
+                meanbetas[:, :nclus + 2, fold] = np.nanmedian(betas_all, axis=2)
+                meanitcpt[:nclus + 2, fold] = np.nanmedian(itcpt_all, axis=1)
 
     return np.nanmedian(meanbetas, axis=0), np.nanmedian(meanitcpt, axis=0)
 

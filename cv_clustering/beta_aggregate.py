@@ -41,23 +41,7 @@ def subfold_mse(all_subfold_betas):
 
     return allmses, allranks, n_unique_fits, mutual_best_fit, mutual_best_fit_mse, matched_fit_mse
 
-def assigfromproba(probs, thr=10):
-    assignment = np.full([probs.shape[0]],np.nan)
-    assignment10= np.full([probs.shape[0]],0)
-    likelihood = np.full([probs.shape[0]],np.nan)
-    for i in range(probs.shape[0]):
-        crit = probs[i,:]
-        if len(np.where(np.isfinite(crit))[0])>0:
-            likelihood[i] = np.nanmax(crit)
-            assignment[i]=np.where(crit==np.nanmax(crit))[0]+1
-            # check whether the highest probability is 10% above the average given the number of classes
-            avgcrit=1/probs.shape[1]
-            if np.nanmax(crit)>(avgcrit+(avgcrit/thr)):
-                # now check whether highest probability is 10% higher than any other
-                threshval = np.nanmax(crit)-np.nanmax(crit)/thr
-                if len(np.where(crit>threshval)[0])==1:
-                    assignment10[i]=assignment[i]
-    return assignment, likelihood, assignment10
+
 
 def vector_mse(a, b):
     scaler = StandardScaler()
@@ -151,6 +135,23 @@ def aggregate(all_subfold_betas, method):
     all_weighted_betas, aggregated_betas = combine_weighted_betas(allmses, all_subfold_betas, smallest_overall_error[0], method)
     return aggregated_betas, all_weighted_betas
 
+def assigfromproba(probs, thr=10):
+    assignment = np.full([probs.shape[0]],np.nan)
+    assignment10= np.full([probs.shape[0]],0)
+    likelihood = np.full([probs.shape[0]],np.nan)
+    for i in range(probs.shape[0]):
+        crit = probs[i,:]
+        if len(np.where(np.isfinite(crit))[0])>0:
+            likelihood[i] = np.nanmax(crit)
+            assignment[i]=np.where(crit==np.nanmax(crit))[0]+1
+            # check whether the highest probability is 10% above the average given the number of classes
+            avgcrit=1/probs.shape[1]
+            if np.nanmax(crit)>(avgcrit+(avgcrit/thr)):
+                # now check whether highest probability is 10% higher than any other
+                threshval = np.nanmax(crit)-np.nanmax(crit)/thr
+                if len(np.where(crit>threshval)[0])==1:
+                    assignment10[i]=assignment[i]
+    return assignment, likelihood, assignment10
 
 def get_proba(Xtrain, labels, betas, Xtest):
     # here i am assuming that the first row of betas is the intercept row
@@ -170,4 +171,11 @@ def predictargmax(X, betas):
     newY = tmpX.dot(betas)
     argmaxY = np.array([np.where(newY[i, :] == np.max(newY[i, :]))[0][0] for i in range(newY.shape[0])])
     return argmaxY
+
+def prob_from_data2(Xtrain, betas, Xtest, thr=10):
+    argmaxYtrain = predictargmax(Xtrain, betas)
+    tmp_trainproba, tmp_testproba = get_proba(Xtrain, argmaxYtrain, betas, Xtest)
+    assignment1, likelihood1, assignment101 = assigfromproba(tmp_trainproba,thr)
+    assignment2, likelihood2, assignment102 = assigfromproba(tmp_testproba, thr)
+    return assignment1, likelihood1, assignment101, assignment2, likelihood2, assignment102
 

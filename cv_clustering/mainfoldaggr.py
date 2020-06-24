@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import csv
-from cv_clustering.beta_aggregate import aggregate, get_proba, assigfromproba
+from cv_clustering.beta_aggregate import aggregate, get_proba, assigfromproba, vector_mse
 from sklearn.metrics import silhouette_samples, silhouette_score
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
@@ -150,14 +150,16 @@ def agglom(input_filedir, modstr, sets, n_k, n_cv_folds):
         pickle.dump([nclus_agglom], f)
 
 
+
+
 def agglom_best_k_per_sf(input_filedir, modstr, input_filedir_null, modstr_null, sets, setsize, n_cv_folds, n):
 
     with open(input_filedir + modstr + 'sil_f1_prob_lvl2.pkl', 'rb') as f:
-        [silhouette1_lvl2, silhouette2_lvl2, microf1_lvl2, macrof1_lvl2, testproba_lvl2, clussize_CE_lvl2,
+        [silhouette1_lvl2, silhouette2_lvl2, microf1_lvl2, macrof1_lvl2, testproba_lvl2, testprobadist_lvl2, clussize_CE_lvl2,
          clussize_test_lvl2] = pickle.load(f)
 
     with open(input_filedir_null + modstr_null + 'sil_f1_prob_lvl2.pkl', 'rb') as f:
-        [silhouette1_lvl2n, silhouette2_lvl2n, microf1_lvl2n, macrof1_lvl2n, testproba_lvl2n, clussize_CE_lvl2n,
+        [silhouette1_lvl2n, silhouette2_lvl2n, microf1_lvl2n, macrof1_lvl2n, testproba_lvl2n, testprobadist_lvl2, clussize_CE_lvl2n,
          clussize_test_lvl2n] = pickle.load(f)
 
     # get best k for each subfold based on difference from null for silhouette2_lvl2
@@ -342,3 +344,316 @@ def plot_dendrogram(model, **kwargs):
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)
+
+
+# stick everything into one function and do it for all sets
+def doagglomchks(s, link, input_filediri, modstri, mf,n_cv_folds, sets, setsize, n_k):
+    # step 1: collect all vectors across subfolds for each k
+    k_collect = [None] * n_k
+
+    for k in range(n_k):
+
+        k_collect[k] = np.empty((setsize[s], 0), int)
+        for sf in range(n_cv_folds):
+            fold = (mf * n_cv_folds) + sf
+            filestr = (input_filediri + sets[s] + modstri + str(fold))
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+
+            if k == 0:
+                crit = np.nanmean(mod.allbetas[k], axis=1)
+                crit = np.array([crit, -crit]).T
+                criti = np.nanmean(mod.allitcpt[k])
+                criti = np.array([criti, -criti]).T
+            else:
+                crit = np.nanmean(mod.allbetas[k], axis=2)
+                criti = np.nanmean(mod.allitcpt[k], axis=1)
+
+            k_collect[k] = np.append(k_collect[k], crit, axis=1)
+
+    # step 3: force k threshold
+    avgclus = [None] * n_k
+    for kthresh in range(n_k):
+        avgclus[kthresh] = []
+        for k in range(n_k):
+            if k >= kthresh:
+                if link == 0:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='ward').fit(k_collect[k].T)
+                elif link == 1:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='complete').fit(k_collect[k].T)
+                elif link == 2:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='average').fit(k_collect[k].T)
+                else:
+                    print('please select linkage function')
+                avgbs = np.full([k_collect[k].shape[0], kthresh + 2], np.nan)
+                for c in range(kthresh + 2):
+                    avgbs[:, c] = np.nanmean(k_collect[k][:, np.where(clustering.labels_ == c)[0]], axis=1)
+                avgclus[kthresh].append(avgbs)
+
+    # step 4: calculate match between each solution
+    averageerror = np.zeros(n_k)
+    for kthresh in range(n_k):
+        bestmatch = []
+        for mf1 in range(len(avgclus[kthresh])):
+            for mf2 in range(len(avgclus[kthresh])):
+                if mf1 != mf2:
+                    allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
+                    for c1 in range(kthresh + 2):
+                        for c2 in range(kthresh + 2):
+                            a = avgclus[kthresh][mf1][:, c1]
+                            b = avgclus[kthresh][mf2][:, c2]
+                            allmses[c1, c2] = vector_mse(a, b)
+                    for c in range(kthresh + 2):
+                        a = np.where(allmses == np.nanmin(allmses))
+                        bestmatch.append(np.nanmin(allmses))
+                        allmses[a[0][0], :] = np.nan
+                        allmses[:, a[1][0]] = np.nan
+        averageerror[kthresh] = np.nanmean(np.array(bestmatch))
+    return averageerror
+
+
+def moreagglomloop(a):
+    s=a[0]
+    input_filediri=a[1]
+    modstri=a[2]
+    sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s",
+            "Tct_Scs_tc_sc_s"]
+    setsize = np.array([82, 82, 150, 84, 84, 154, 82, 82, 150, 84, 84, 154])
+    mferrormat = np.full([20, 8, 4], np.nan)
+    for mf in range(4):
+        mferrormat[:, :, mf] = doagglomchks_more(s=s, link=0, input_filediri=input_filediri, modstri=modstri, mf=mf,
+                                            n_cv_folds=4, sets=sets, setsize=setsize, n_k=8,
+                                            n_threshs=20)
+    return mferrormat
+
+def doagglomchks_more(s, link, input_filediri, modstri, mf, n_cv_folds, sets, setsize, n_k, n_threshs):
+    # step 1: collect all vectors across subfolds for each k
+    k_collect = [None] * n_k
+
+    for k in range(n_k):
+
+        k_collect[k] = np.empty((setsize[s], 0), int)
+        for sf in range(n_cv_folds):
+            fold = (mf * n_cv_folds) + sf
+            filestr = (input_filediri + sets[s] + modstri + str(fold))
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+
+            if k == 0:
+                crit = np.nanmean(mod.allbetas[k], axis=1)
+                crit = np.array([crit, -crit]).T
+                criti = np.nanmean(mod.allitcpt[k])
+                criti = np.array([criti, -criti]).T
+            else:
+                crit = np.nanmean(mod.allbetas[k], axis=2)
+                criti = np.nanmean(mod.allitcpt[k], axis=1)
+
+            k_collect[k] = np.append(k_collect[k], crit, axis=1)
+
+    # step 3: force k threshold
+    avgclus = [None] * n_threshs
+    passcomp = np.full([n_threshs, n_k], 0)
+    for kthresh in range(n_threshs):  # (n_k):
+        avgclus[kthresh] = [None] * n_k
+        for k in range(n_k):
+            # if k >0:#>= kthresh:
+            try:
+                if link == 0:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='ward').fit(k_collect[k].T)
+                elif link == 1:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='complete').fit(k_collect[k].T)
+                elif link == 2:
+                    clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='average').fit(k_collect[k].T)
+                else:
+                    print('please select linkage function')
+                avgbs = np.full([k_collect[k].shape[0], kthresh + 2], np.nan)
+                for c in range(kthresh + 2):
+                    avgbs[:, c] = np.nanmean(k_collect[k][:, np.where(clustering.labels_ == c)[0]], axis=1)
+                avgclus[kthresh][k] = (avgbs)
+            except:
+                passcomp[kthresh, k] = 1
+
+    errormat = np.full([n_threshs, n_k], np.nan)
+    # step 4: calculate match between each solution
+    averageerror = np.zeros(n_k)
+    for kthresh in range(n_threshs):
+        for k in range(n_k):
+            if passcomp[kthresh, k] == 0:
+                bestmatch = []
+                for kmatch in range(len(avgclus[kthresh])):
+                    if passcomp[kthresh, kmatch] == 0:
+                        if k != kmatch:
+                            allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
+                            for c1 in range(kthresh + 2):
+                                for c2 in range(kthresh + 2):
+                                    a = avgclus[kthresh][k][:, c1]
+                                    b = avgclus[kthresh][kmatch][:, c2]
+                                    allmses[c1, c2] = vector_mse(a, b)
+                            for c in range(kthresh + 2):
+                                a = np.where(allmses == np.nanmin(allmses))
+                                bestmatch.append(np.nanmin(allmses))
+                                allmses[a[0][0], :] = np.nan
+                                allmses[:, a[1][0]] = np.nan
+                errormat[kthresh, k] = np.nanmean(bestmatch)
+            # averageerror[kthresh] = np.nanmean(np.array(bestmatch))
+    return errormat
+
+
+def agglomerrorwrap(input_filediri, modstri, n_cv_folds, sets, setsize, n_k):
+    allerror = np.full([12, 4, 8, 3], np.nan)
+    for s in range(12):
+        print(sets[s])
+        for mf in range(4):
+            for link in range(3):
+                averageerror = doagglomchks(s, link, input_filediri, modstri, mf, n_cv_folds, sets, setsize, n_k)
+                allerror[s, mf, :, link] = averageerror
+    with open((input_filediri + 'allerror.pkl'), 'wb') as f:
+        pickle.dump([allerror], f)
+
+
+# stick everything into one function and do it for all sets
+def doagglom_kthresh(s, link, input_filediri, modstri, mf, n_cv_folds, sets, setsize, n_k, kthresh):
+    # step 1: collect all vectors across subfolds for each k
+    k_collect = [None] * n_k
+
+    for k in range(n_k):
+
+        k_collect[k] = np.empty((setsize[s], 0), int)
+        for sf in range(n_cv_folds):
+            fold = (mf * n_cv_folds) + sf
+            filestr = (input_filediri + sets[s] + modstri + str(fold))
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+
+            if k == 0:
+                crit = np.nanmean(mod.allbetas[k], axis=1)
+                crit = np.array([crit, -crit]).T
+                criti = np.nanmean(mod.allitcpt[k])
+                criti = np.array([criti, -criti]).T
+            else:
+                crit = np.nanmean(mod.allbetas[k], axis=2)
+                criti = np.nanmean(mod.allitcpt[k], axis=1)
+
+            k_collect[k] = np.append(k_collect[k], crit, axis=1)
+
+    # step 3: force k threshold
+    avgclus = []
+    for k in range(n_k):
+        if k >= kthresh:
+            if link == 0:
+                clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='ward').fit(k_collect[k].T)
+            elif link == 1:
+                clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='complete').fit(k_collect[k].T)
+            elif link == 2:
+                clustering = AgglomerativeClustering(n_clusters=kthresh + 2, linkage='average').fit(k_collect[k].T)
+            else:
+                print('please select linkage function')
+            avgbs = np.full([k_collect[k].shape[0], kthresh + 2], np.nan)
+            for c in range(kthresh + 2):
+                avgbs[:, c] = np.nanmean(k_collect[k][:, np.where(clustering.labels_ == c)[0]], axis=1)
+            avgclus.append(avgbs)
+
+    # step 4: calculate match between each solution
+    # treat the smallest k as the index
+    newbs = np.full([avgclus[0].shape[0], kthresh + 2, len(avgclus)], np.nan)
+    for k in range(kthresh + 2):
+        newbs[:, k, 0] = avgclus[0][:, k]
+
+    for mf1 in range(len(avgclus)):
+        if mf1 != 0:
+            allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
+            for c1 in range(kthresh + 2):
+                for c2 in range(kthresh + 2):
+                    a = avgclus[mf1][:, c1]
+                    b = avgclus[0][:, c2]
+                    allmses[c1, c2] = vector_mse(a, b)
+            for c in range(kthresh + 2):
+                a = np.where(allmses == np.nanmin(allmses))
+                allmses[a[0][0], :] = np.nan
+                allmses[:, a[1][0]] = np.nan
+                newbs[:, a[1][0], mf1] = avgclus[mf1][:, a[0][0]]
+
+    # fig=plt.figure(figsize=[15,6])
+    # for c in range(newbs.shape[1]):
+    #    plt.subplot(2,newbs.shape[1],c+1); plt.plot(newbs[:,c,:]);
+    #    plt.subplot(2,newbs.shape[1],c+newbs.shape[1]+1); plt.imshow(np.corrcoef(newbs[:,c,:].T)); plt.colorbar();
+    # plt.show()
+
+    return avgclus, newbs, k_collect
+
+
+def cross_sf_similarity_chk(input_filediri,modstri,sets, setsize,n_k=8, n_cv_folds=4):
+    averageerror = np.full([len(sets),n_cv_folds,n_k],np.nan)
+
+    for s in range(len(sets)):
+        print(sets[s])
+        for mf in range(n_cv_folds):
+
+            # collect all betas
+            betacollect = [None]*n_k
+            for k in range(n_k):
+                betacollect[k]=np.full([setsize[s],k+2,n_cv_folds],np.nan)
+            for sf in range(n_cv_folds):
+                filestr = (input_filediri + sets[s] + modstri + str((mf * n_cv_folds + sf)))
+                with open(filestr, "rb") as f:
+                    mod = pickle.load(f)
+                for k in range(n_k):
+                    if k==0:
+                        betacollect[k][:,0,sf] = np.nanmean(mod.allbetas[k], axis=1)
+                        betacollect[k][:,1,sf] = -np.nanmean(mod.allbetas[k], axis=1)
+                    else:
+                        betacollect[k][:,:,sf]=np.nanmean(mod.allbetas[k],axis=2)
+
+
+            for k in range(n_k):
+                 # step 4: calculate match between each solution
+                bestmatch=[]
+                for sf1 in range( n_cv_folds):
+                    for sf2 in range( n_cv_folds):
+                        if sf1 != sf2:
+                            allmses = np.full([k + 2, k + 2], np.nan)
+                            for c1 in range(k + 2):
+                                for c2 in range(k + 2):
+                                    a = betacollect[k][:,c1,sf1]
+                                    b = betacollect[k][:,c2,sf2]
+                                    allmses[c1, c2] = vector_mse(a, b)
+                            for c in range(k + 2):
+                                a = np.where(allmses == np.nanmin(allmses))
+                                bestmatch.append(np.nanmin(allmses))
+                                allmses[a[0][0], :] = np.nan
+                                allmses[:, a[1][0]] = np.nan
+                averageerror[s,mf,k] = np.nanmean(np.array(bestmatch))
+
+    with open((input_filediri + 'averageerror_samek.pkl'), 'wb') as f:
+        pickle.dump(averageerror, f)
+
+
+def samekagglom_error_mf(input_filedir, sets, setsize, n_k, n_cv_folds):
+    error=np.full([len(sets),n_k],np.nan)
+    for s in range(len(sets)):
+        for k in range(n_k):
+            # collect all betas
+            betacollect = np.full([setsize[s],k+2,n_cv_folds],np.nan)
+            for mf in range(n_cv_folds):
+                with open((input_filedir + sets[s] + '_aggr_betas_k' + str(k) + '_mf' + str(mf) + '.pkl'), 'rb') as f:
+                    [X, clustering, assig, allbetas, tmp_testproba, argmaxYtest, argmaxYtest2] = pickle.load(f)
+                betacollect[:, :, mf] = allbetas
+
+            bestmatch = []
+            for mf1 in range(n_cv_folds):
+                for mf2 in range(n_cv_folds):
+                    if mf1 != mf2:
+                        allmses = np.full([k + 2, k + 2], np.nan)
+                        for c1 in range(k + 2):
+                            for c2 in range(k + 2):
+                                a = betacollect[:, c1, mf1]
+                                b = betacollect[:, c2, mf2]
+                                allmses[c1, c2] = vector_mse(a, b)
+                        for c in range(k + 2):
+                            a = np.where(allmses == np.nanmin(allmses))
+                            bestmatch.append(np.nanmin(allmses))
+                            allmses[a[0][0], :] = np.nan
+                            allmses[:, a[1][0]] = np.nan
+            error[s, k] = np.nanmean(np.array(bestmatch))
+    with open((input_filedir + 'mferror_samek.pkl'), 'wb') as f:
+        pickle.dump(error, f)
