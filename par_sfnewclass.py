@@ -1,13 +1,13 @@
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering')
 import pickle
-from cv_clustering import clusmetwrapper
+
 from joblib import Parallel, delayed
 import multiprocessing
 import os
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
-import clusmetwrapper
+
 
 def sf_new_class(savedir,modstr='_mod_'):
 

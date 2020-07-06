@@ -167,6 +167,12 @@ def rand_score_withnans(a1,a2):
     a1 = np.delete(a1, np.where(np.isnan(a1))[0])
     return adjusted_rand_score(a1,a2)
 
+
+def ttest_withnans(a1,a2):
+    a1 = np.delete(a1, np.where(np.isnan(a1))[0])
+    a2 = np.delete(a2, np.where(np.isnan(a2))[0])
+    return scipy.stats.ttest_ind(a1,a2)
+
 def silhouette_score_withnans(X,a):
     X = np.delete(X, np.where(np.isnan(a))[0], axis=0)
     a = np.delete(a, np.where(np.isnan(a))[0])

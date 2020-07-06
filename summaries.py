@@ -54,8 +54,11 @@ all_modstr = '_mod_'
 ixisp_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/spectral/IXI2_spectral_'
 ixisp_modstr = '_mod_'
 
-input_filedir = ixisp_input_filedir
-modstr = ixisp_modstr
+mddsp_input_filedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/MDD_spectral/mod/MDD_spectral_'
+mddsp_modstr='_mod_'
+
+input_filedir = mddsp_input_filedir
+modstr = mddsp_modstr
 
 #input_filedir_null=mdd_null_input_filedir
 #modstr_null=mdd_null_modstr
@@ -63,27 +66,27 @@ modstr = ixisp_modstr
 sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
 setsize=np.array([82,82,150,84,84,154,82,82,150,84,84,154])
 n_cv_folds = 4
-n = 544
+n = 398
 #n = 740
 #n=398
 n_k = 8
 
 # make sure par_sfnewclass.py is run first (using bb.py) so the hypergraph partitioning is done
 
-do_level_1 = 1
+do_level_1 = 0
 do_level_2 = 0
-do_level_3 = 0
+do_level_3 = 1
 do_level_35 = 0
 
-pac_lvl1_done = 1
-reclass_lvl2_done = 1
-subfold_similarity_done=1
-mainfold_similarity_done=1
+pac_lvl1_done = 0
+reclass_lvl2_done = 0
+subfold_similarity_done=0
+mainfold_similarity_done=0
 agglom_lvl3_done = 0
-aggr00_lvl3_done = 1
-agglom_by_k_done = 1
-moveon=0
-best_k_agglom_done=1
+aggr00_lvl3_done = 0
+agglom_by_k_done = 0
+moveon=1
+best_k_agglom_done=0
 
 ##################
 #    LEVEL 1     #

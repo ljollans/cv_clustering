@@ -368,8 +368,10 @@ def doagglomchks(s, link, input_filediri, modstri, mf,n_cv_folds, sets, setsize,
             else:
                 crit = np.nanmean(mod.allbetas[k], axis=2)
                 criti = np.nanmean(mod.allitcpt[k], axis=1)
-
-            k_collect[k] = np.append(k_collect[k], crit, axis=1)
+            if len(np.where(np.isnan(crit))[0])==len(crit):
+                pass
+            else:
+                k_collect[k] = np.append(k_collect[k], crit, axis=1)
 
     # step 3: force k threshold
     avgclus = [None] * n_k
@@ -616,12 +618,15 @@ def cross_sf_similarity_chk(input_filediri,modstri,sets, setsize,n_k=8, n_cv_fol
                                 for c2 in range(k + 2):
                                     a = betacollect[k][:,c1,sf1]
                                     b = betacollect[k][:,c2,sf2]
-                                    allmses[c1, c2] = vector_mse(a, b)
-                            for c in range(k + 2):
+                                    if len(np.where(np.isnan(a))[0])==0 and len(np.where(np.isnan(b))[0])==0:
+                                        allmses[c1, c2] = vector_mse(a, b)
+
+                            while len(np.where(np.isfinite(allmses))[0])>0:
                                 a = np.where(allmses == np.nanmin(allmses))
                                 bestmatch.append(np.nanmin(allmses))
                                 allmses[a[0][0], :] = np.nan
                                 allmses[:, a[1][0]] = np.nan
+
                 averageerror[s,mf,k] = np.nanmean(np.array(bestmatch))
 
     with open((input_filediri + 'averageerror_samek.pkl'), 'wb') as f:
