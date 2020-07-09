@@ -3,6 +3,9 @@ import numpy as np
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 import sys
+
+from cv_clustering.agglom import doagglom_moremet
+
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
 from cv_clustering.mainfoldaggr import agglom, aggr4comp, agglom_best_k_per_sf, doagglomchks, agglomerrorwrap, \
     cross_sf_similarity_chk, samekagglom_error_mf, doagglomchks_more, moreagglomloop
@@ -40,25 +43,13 @@ import multiprocessing
 # Level 4: commonality across mainfold solutions
 
 
-mdd_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/FEB_PUT/FEB_'
-mdd_modstr = '_mod_ctrl_'
-mdd_null_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/null/MDDnull/MDD__'
-mdd_null_modstr = '_mod_null_'
-ixi_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/act/IXI2_'
-ixi_modstr = '_mod_'
-ixi_null_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/null2/IXI2_'
-ixi_null_modstr = '_mod_null_'
-all_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/ALL/wspecsamp_'
-all_modstr = '_mod_'
+dattype=['MDD_GMM','MDD_GMM_null','MDD_spectral','IXI_GMM','IXI_GMM_null','IXI_spectral','ALL_GMM']
+modstr2use=['_mod_ctrl_','_mod_null_','_mod_','_mod_','_mod_null_','_mod_','_mod_']
+pref=['normative_correction/FEB_','MDD__','MDD_spectral_','IXI2_','IXI2_','IXI2_spectral_', 'wspecsamp_']
 
-ixisp_input_filedir = '/Users/lee_jollans/Projects/clustering_pilot/IXI2/spectral/IXI2_spectral_'
-ixisp_modstr = '_mod_'
-
-mddsp_input_filedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/MDD_spectral/mod/MDD_spectral_'
-mddsp_modstr='_mod_'
-
-input_filedir = mddsp_input_filedir
-modstr = mddsp_modstr
+ii=7
+input_filedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[ii] + '/mod/' + pref[ii]
+modstr = modstr2use[ii]
 
 #input_filedir_null=mdd_null_input_filedir
 #modstr_null=mdd_null_modstr
@@ -75,8 +66,9 @@ n_k = 8
 
 do_level_1 = 0
 do_level_2 = 0
-do_level_3 = 1
+do_level_3 = 0
 do_level_35 = 0
+do_level_30 = 1
 
 pac_lvl1_done = 0
 reclass_lvl2_done = 0
@@ -85,7 +77,7 @@ mainfold_similarity_done=0
 agglom_lvl3_done = 0
 aggr00_lvl3_done = 0
 agglom_by_k_done = 0
-moveon=1
+moveon=0
 best_k_agglom_done=0
 
 ##################
@@ -257,9 +249,27 @@ if do_level_3 == 1:
 ####################
 #    LEVEL 3.5     #
 ####################
-if best_k_agglom_done==0:
-    agglom_best_k_per_sf(input_filedir, modstr, input_filedir_null, modstr_null, sets, setsize, n_cv_folds, n)
-    with open((input_filedir + 'aggr_betas_best_sf_k.pkl'), 'rb') as f:
-        [bestk_mdd,final_k,allbetas_sfk,silmaintrain,silmaintest,train_clus_assig,test_clus_assig,train_clus_prob,test_clus_prob,train_clus_assig25,test_clus_assig25] = pickle.load(f)
+if do_level_35==1:
+    if best_k_agglom_done==0:
+        agglom_best_k_per_sf(input_filedir, modstr, input_filedir_null, modstr_null, sets, setsize, n_cv_folds, n)
+        with open((input_filedir + 'aggr_betas_best_sf_k.pkl'), 'rb') as f:
+            [bestk_mdd,final_k,allbetas_sfk,silmaintrain,silmaintest,train_clus_assig,test_clus_assig,train_clus_prob,test_clus_prob,train_clus_assig25,test_clus_assig25] = pickle.load(f)
 
 
+################################################
+#    LEVEL 3.0 -- agglom with more metrics     #
+################################################
+if do_level_30==1:
+    averageerror=np.full([12,4,n_k,n_k],np.nan)
+    n_vecs = np.full([12,4,n_k,n_k, n_k+2],np.nan)
+    source_vecs = np.full([12,4,n_k, n_k, n_k + 2], np.nan)
+    ed_btw_vecs = np.full([12,4,n_k, n_k, n_k + 2], np.nan)
+    avgclus=[None]*len(sets)
+    for s in range(len(sets)):
+        filepath2use = (input_filedir + sets[s] + modstr)
+        avgclus[s]=[None]*n_cv_folds
+        for mf in range(n_cv_folds):
+            averageerror[s,mf,:,:], n_vecs[s,mf,:,:,:], source_vecs[s,mf,:,:,:], ed_btw_vecs[s,mf,:,:,:], avgclus[s][mf] = doagglom_moremet(0, mf ,n_cv_folds, setsize[s], n_k, filepath2use)
+
+    with open((input_filedir + 'agglom_moremet.pkl'), 'wb') as f:
+        pickle.dump([averageerror,n_vecs,source_vecs,ed_btw_vecs,avgclus], f)

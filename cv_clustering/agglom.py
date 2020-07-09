@@ -4,14 +4,14 @@ from cv_clustering.beta_aggregate import vector_mse
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
 from sklearn.cluster import AgglomerativeClustering
+from scipy import spatial
 
-
-def doagglomchks(link, mf,n_cv_folds, f, n_k, filepath2use):
+def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
 
     # link: 0:Ward, 1:Complete, 2:Average linkage type for AgglomerativeClustering
     # mf: main CV fold (to retrieve the correct nested CV files)
     # n_cv_folds : number of nested CV folds (to make sure all files and the correct files are retrieved)
-    # n : number of features (to initialize the array without having to load a file first)
+    # nfeatures : number of features (to initialize the array without having to load a file first)
     # n_k: number of values of k that were tested
 
     # filepath2use consists of input_filediri + sets[s] + modstri
@@ -22,10 +22,12 @@ def doagglomchks(link, mf,n_cv_folds, f, n_k, filepath2use):
     # step 1: collect all vectors across nested CV folds for each k
 
     k_collect = [None] * n_k
+    source_collect = [None] * n_k
 
     for k in range(n_k):
 
-        k_collect[k] = np.empty((f, 0), int)
+        k_collect[k] = np.empty((nfeatures, 0), int)
+        source_collect[k] = np.empty(0, int)
         for sf in range(n_cv_folds):
             fold = (mf * n_cv_folds) + sf
             filestr = (filepath2use + str(fold))
@@ -46,14 +48,18 @@ def doagglomchks(link, mf,n_cv_folds, f, n_k, filepath2use):
                 pass
             else:
                 k_collect[k] = np.append(k_collect[k], crit, axis=1)
+                source_collect[k] = np.append(source_collect[k], np.ones(k+2)*sf)
     # k_collect is a list with length n_k. k_collect[k] contains all beta vectors from all nested CV folds for models
     # with that k
 
     ###################################################################################################################
     # step 3: force k threshold
+    n_vecs = np.full([n_k,n_k, n_k+2],np.nan)
+    source_vecs = np.full([n_k, n_k, n_k + 2], np.nan)
+    ed_btw_vecs = np.full([n_k, n_k, n_k + 2], np.nan)
     avgclus = [None] * n_k
     for kthresh in range(n_k):
-        avgclus[kthresh] = []
+        avgclus[kthresh] = [None] * n_k
         for k in range(n_k):
             if k >= kthresh: # only apply this threshold if the original value of k was at least that big
 
@@ -70,8 +76,22 @@ def doagglomchks(link, mf,n_cv_folds, f, n_k, filepath2use):
                 # for each beta vector group, get the average
                 avgbs = np.full([k_collect[k].shape[0], kthresh + 2], np.nan)
                 for c in range(kthresh + 2):
-                    avgbs[:, c] = np.nanmean(k_collect[k][:, np.where(clustering.labels_ == c)[0]], axis=1)
-                avgclus[kthresh].append(avgbs)
+                    whichfpvs=np.where(clustering.labels_ == c)[0]
+                    # how many
+                    n_vecs[kthresh,k,c]=len(whichfpvs)
+                    # from how many folds
+                    source_vecs[kthresh,k,c]=len(np.unique(source_collect[k][whichfpvs]))
+                    # euc dist between them
+                    fvpgroup = k_collect[k][:, whichfpvs]
+                    tmp=[]
+                    for f1 in range(len(whichfpvs)):
+                        for f2 in range(len(whichfpvs)):
+                            if f1!=f2:
+                                tmp.append(spatial.distance.euclidean(fvpgroup[:,f1], fvpgroup[:,f2]))
+                    ed_btw_vecs[kthresh,k,c]=np.nanmean(tmp)
+                    # average them
+                    avgbs[:, c] = np.nanmean(fvpgroup, axis=1)
+                avgclus[kthresh][k]=avgbs
     # avgclus is a list with length n_k-1.
     # avgclus[k] is a list with length n_k-k
     # avgclus[k][z] contains the average for each of k groups of beta vectors based on models where the original
@@ -79,30 +99,32 @@ def doagglomchks(link, mf,n_cv_folds, f, n_k, filepath2use):
 
     ###################################################################################################################
     # step 4: calculate match between each solution
-    averageerror = np.zeros(n_k)
+    averageerror = np.full([n_k, n_k], np.nan)
     for kthresh in range(n_k):
-        bestmatch = []
-        for mf1 in range(len(avgclus[kthresh])):
-            for mf2 in range(len(avgclus[kthresh])):
-                if mf1 != mf2:
+        for k1 in range(n_k):
+            if k1>=kthresh:
+                bestmatch = []
+                for k2 in range(n_k):
+                    if k2 >= kthresh:
+                        if k1 != k2:
 
-                    # for any two solutions that were aggregated down to the same number of clusters
-                    # get the mse between every pair of vectors (each vector=the average of a group of beta vectors
-                    # clustered together by the hierarchical clustering algorithm)
-                    allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
-                    for c1 in range(kthresh + 2):
-                        for c2 in range(kthresh + 2):
-                            a = avgclus[kthresh][mf1][:, c1]
-                            b = avgclus[kthresh][mf2][:, c2]
-                            allmses[c1, c2] = vector_mse(a, b)
+                            # for any two solutions that were aggregated down to the same number of clusters
+                            # get the mse between every pair of vectors (each vector=the average of a group of beta vectors
+                            # clustered together by the hierarchical clustering algorithm)
+                            allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
+                            for c1 in range(kthresh + 2):
+                                for c2 in range(kthresh + 2):
+                                    a = avgclus[kthresh][k1][:, c1]
+                                    b = avgclus[kthresh][k2][:, c2]
+                                    allmses[c1, c2] = spatial.distance.euclidean(a, b)
 
-                    # go through the mse matrix and pick the lowest error value --> match those vectors and note the
-                    # error, and then move on to find the next pair of best matching vectors never pulling the same
-                    # vector twice
-                    for c in range(kthresh + 2):
-                        a = np.where(allmses == np.nanmin(allmses))
-                        bestmatch.append(np.nanmin(allmses))
-                        allmses[a[0][0], :] = np.nan
-                        allmses[:, a[1][0]] = np.nan
-        averageerror[kthresh] = np.nanmean(np.array(bestmatch))
-    return averageerror
+                            # go through the mse matrix and pick the lowest error value --> match those vectors and note the
+                            # error, and then move on to find the next pair of best matching vectors never pulling the same
+                            # vector twice
+                            for c in range(kthresh + 2):
+                                a = np.where(allmses == np.nanmin(allmses))
+                                bestmatch.append(np.nanmin(allmses))
+                                allmses[a[0][0], :] = np.nan
+                                allmses[:, a[1][0]] = np.nan
+                averageerror[kthresh, k1] = np.nanmean(np.array(bestmatch))
+    return averageerror, n_vecs, source_vecs, ed_btw_vecs, avgclus

@@ -56,9 +56,12 @@ def vector_mse(a, b):
         b = np.delete(b, np.where(np.isnan(b))[0])
         b = np.delete(b, np.where(np.isnan(a))[0])
         a = np.delete(a, np.where(np.isnan(a))[0])
-
-        vmse = metrics.mean_squared_error(scaler.fit_transform(np.expand_dims(a, axis=1)),
-                                          scaler.fit_transform(np.expand_dims(b, axis=1)))
+        try:
+            vmse = metrics.mean_squared_error(scaler.fit_transform(np.expand_dims(a, axis=1)),
+                                                scaler.fit_transform(np.expand_dims(b, axis=1)))
+        except:
+            vmse=np.nan
+            print('failed on calculating mse')
     else:
         vmse = np.nan
 
