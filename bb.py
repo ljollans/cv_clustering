@@ -1,2 +1,7 @@
 import par_sfnewclass
-par_sfnewclass.sf_new_class(savedir='/Users/lee_jollans/Projects/clustering_pilot/spectral/MDD/MDD_spectral_',modstr='_mod_')
+for tries in range(1):
+    try:
+       par_sfnewclass.sf_new_class(savedir='/Volumes/ELEMENTS/clustering_pilot/clustering_output/IXI3_GMM/IXI3_',modstr='_mod_')
+    except:
+       pass
+

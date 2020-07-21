@@ -15,7 +15,7 @@ def sf_new_class(savedir,modstr='_mod_'):
             "Tct_Scs_tc_sc_s"]
     num_cores = multiprocessing.cpu_count()
     for current_set in range(12):
-        Parallel(n_jobs=4)(delayed(do_sf_newcalc)((savedir + sets[current_set] + modstr + str(fold))) for fold in range(16))
+        Parallel(n_jobs=num_cores)(delayed(do_sf_newcalc)((savedir + sets[current_set] + modstr + str(fold))) for fold in range(16))
 
 
 def do_sf_newcalc(pkl_filename):
