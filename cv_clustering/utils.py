@@ -31,15 +31,13 @@ def select_testset(cv_assignment, mainfold, subfold):
         & (~np.isnan(cv_assignment[:, mainfold]))
     )[0]
 
-def colorscatter(x, y, d, ax, legendyn=1, aa=1, mm='o'):
+def colorscatter(x, y, d, ax, legendyn=1, aa=1, mm='o',colors=matplotlib.cm.tab10(np.linspace(0, 1, 10))):
     try:
         groups = set(y[~np.isnan(y)])
     except:
         groups = np.unique(y)
-    if len(groups)>10:
+    if len(groups)>len(colors):
         colors = matplotlib.cm.tab20(np.linspace(0, 1, 20))
-    else:
-        colors = matplotlib.cm.tab10(np.linspace(0, 1, 10))
     ctr = -1
     for g in groups:
         ctr += 1
