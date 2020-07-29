@@ -5,7 +5,7 @@ import csv
 import sklearn
 
 from cv_clustering.beta_aggregate import aggregate, get_proba, assigfromproba, vector_mse, predictargmax
-from cv_clustering.utils import contingency_matrix
+from cv_clustering.utils import contingency_matrix, rand_score_withnans
 from sklearn.metrics import silhouette_samples, silhouette_score
 import sys
 sys.path.append('/Users/lee_jollans/PycharmProjects/mdd_clustering/cv_clustering')
@@ -706,7 +706,7 @@ def get_labels_rand(d, k, n):
             "Tct_Scs_tc_sc_s"]
     dattype = ['MDD_GMM', 'MDD_GMM_null', 'MDD_spectral', 'IXI3_GMM', 'IXI_GMM_null', 'IXI_spectral', 'ALL_GMM']
     modstr = ['_mod_ctrl_', '_mod_null_', '_mod_', '_mod_', '_mod_null_', '_mod_', '_mod_']
-    modpref = ['normative_correction/FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
+    modpref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
     pref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
 
     with open('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/summaries/' + pref[
@@ -723,7 +723,7 @@ def get_labels_rand(d, k, n):
         for mf in range(4):
             betas = avgclus[s][mf][k - 2][k - 2]
             Y[:, mf] = predictargmax(X, np.concatenate([np.ones(shape=[1, k]), betas], axis=0))
-        Ybar = transformlabels(Y, k)
+        Ybar = transformlabels2(Y, k)
         for mf in range(4):
             tests = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
             ALL_testlabels_k4[tests, s] = Ybar[tests, mf]
@@ -731,8 +731,7 @@ def get_labels_rand(d, k, n):
     rand_ALL_k4 = np.full([12, 12], np.nan)
     for s1 in range(12):
         for s2 in range(12):
-            rand_ALL_k4[s1, s2] = sklearn.metrics.adjusted_rand_score(ALL_testlabels_k4[:, s1],
-                                                                      ALL_testlabels_k4[:, s2])
+            rand_ALL_k4[s1, s2] = rand_score_withnans(ALL_testlabels_k4[:, s1], ALL_testlabels_k4[:, s2])
     return ALL_testlabels_k4, rand_ALL_k4
 
 
@@ -741,7 +740,7 @@ def loadset(d, s):
             "Tct_Scs_tc_sc_s"]
     dattype = ['MDD_GMM', 'MDD_GMM_null', 'MDD_spectral', 'IXI3_GMM', 'IXI_GMM_null', 'IXI_spectral', 'ALL_GMM']
     modstr = ['_mod_ctrl_', '_mod_null_', '_mod_', '_mod_', '_mod_null_', '_mod_', '_mod_']
-    pref = ['normative_correction/FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
+    pref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
 
     with open(('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/mod/' + pref[d] + sets[s] +
                modstr[d] + str(0)), 'rb') as f:

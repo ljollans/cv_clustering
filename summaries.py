@@ -15,11 +15,13 @@ setsize=np.array([82,82,150,84,84,154,82,82,150,84,84,154])
 
 dattype=['MDD_GMM','MDD_GMM_null','MDD_spectral','IXI3_GMM','IXI_GMM_null','IXI_spectral','ALL_GMM']
 modstr2use=['_mod_ctrl_','_mod_null_','_mod_','_mod_','_mod_null_','_mod_','_mod_']
-pref=['normative_correction/FEB_','MDD__','MDD_spectral_','IXI3_','IXI2_','IXI2_spectral_', 'ALLALL3_']
+pref=['FEB_','MDD__','MDD_spectral_','IXI3_','IXI2_','IXI2_spectral_', 'ALLALL3_']
 N=[398,398,398,549,544,544,740]
 
-ii=1
+ii=6
 input_filedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[ii] + '/mod/' + pref[ii]
+savedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[ii] + '/summaries/' + pref[ii]
+
 modstr = modstr2use[ii]
 n_cv_folds = 4
 n = N[ii]
@@ -261,5 +263,8 @@ if do_level_labels==1:
     for k in range(8):
         print(k)
         allsol[k, :, :], allrand[:, :, k] = get_labels_rand(ii, k + 2, n)
-    with open((input_filedir + 'allsol_labels.pkl'), 'wb') as f:
+
+    with open((savedir + 'allsol_labels2.pkl'), 'wb') as f:
         pickle.dump([allsol,allrand], f)
+
+
