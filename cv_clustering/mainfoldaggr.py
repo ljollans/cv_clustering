@@ -723,6 +723,7 @@ def get_labels_rand(d, k, n):
         for mf in range(4):
             betas = avgclus[s][mf][k - 2][k - 2]
             Y[:, mf] = predictargmax(X, np.concatenate([np.ones(shape=[1, k]), betas], axis=0))
+
         Ybar = transformlabels2(Y, k)
         for mf in range(4):
             tests = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
@@ -732,20 +733,75 @@ def get_labels_rand(d, k, n):
     for s1 in range(12):
         for s2 in range(12):
             rand_ALL_k4[s1, s2] = rand_score_withnans(ALL_testlabels_k4[:, s1], ALL_testlabels_k4[:, s2])
+
     return ALL_testlabels_k4, rand_ALL_k4
 
+def remap(prob):
+    for v in range(prob.shape[1]):
+        x=prob[:,v]
+        prob[:,v]= (x - np.min(x)) / (np.max(x) - np.min(x))
+    return prob
 
-def loadset(d, s):
+
+
+
+
+def get_labels_rand_cert(d, k, n):
     sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s",
             "Tct_Scs_tc_sc_s"]
     dattype = ['MDD_GMM', 'MDD_GMM_null', 'MDD_spectral', 'IXI3_GMM', 'IXI_GMM_null', 'IXI_spectral', 'ALL_GMM']
     modstr = ['_mod_ctrl_', '_mod_null_', '_mod_', '_mod_', '_mod_null_', '_mod_', '_mod_']
+    modpref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
     pref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
 
-    with open(('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/mod/' + pref[d] + sets[s] +
-               modstr[d] + str(0)), 'rb') as f:
-        mod = pickle.load(f)
-    return mod.data, mod.cv_assignment
+    with open('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/summaries/' + pref[
+        d] + 'agglom_moremet.pkl', 'rb') as f:
+        [averageerror, n_vecs, source_vecs, ed_btw_vecs, avgclus] = pickle.load(f)
+    print(dattype[d])
+    ALL_testlabels_k4 = np.full([n, 12], np.nan)
+    ALL_testcerts_k4 = np.full([n, 12], np.nan)
+    betas_match = [None]*12
+    for s in range(12):
+        with open(('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/mod/' + pref[d] + sets[s] +
+                   modstr[d] + str(0)), 'rb') as f:
+            mod = pickle.load(f)
+        X = mod.data
+        Y = np.full([X.shape[0], 4], np.nan)
+        Z = np.full([X.shape[0], 4], np.nan)
+        betas_collect = [None]*4
+        for mf in range(4):
+            trains = np.where(np.isfinite(mod.cv_assignment[:, mf]))[0]
+            tests = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
+            betas = avgclus[s][mf][k - 2][k - 2]
+            betas_collect[mf]=betas
+            Y[:,mf] = predictargmax(X, np.concatenate([np.ones(shape=[1, k]), betas], axis=0))
+            trainproba, testproba = get_proba(X[trains, :], Y[trains,mf], betas, X[tests, :])
+            trainproba = remap(trainproba)  # this scales the whole vector of probabilities for each cluster
+            # so there might be shifts for each individual subject
+            testproba = remap(testproba)
+            for ppt in range(len(trains)):
+                Z[trains[ppt], mf] = trainproba[ppt, Y[trains[ppt], mf].astype(int)]
+            for ppt in range(len(tests)):
+                Z[tests[ppt], mf] = testproba[ppt, Y[tests[ppt], mf].astype(int)]
+
+        Ybar, betas_match[s] = transformlabels3(Y, k, betas_collect)
+        testlabels = np.full([Ybar.shape[0]], np.nan)
+        testcerts = np.full([Ybar.shape[0]], np.nan)
+        for mf in range(4):
+            tests = np.where(np.isnan(mod.cv_assignment[:, mf]))[0]
+            testlabels[tests] = Ybar[tests, mf]
+            testcerts[tests] = Z[tests, mf]
+        ALL_testlabels_k4[:, s] = testlabels
+        ALL_testcerts_k4[:, s] = testcerts
+
+    rand_ALL_k4 = np.full([12, 12], np.nan)
+    for s1 in range(12):
+        for s2 in range(12):
+            rand_ALL_k4[s1, s2] = rand_score_withnans(ALL_testlabels_k4[:, s1], ALL_testlabels_k4[:, s2])
+
+    return ALL_testlabels_k4, rand_ALL_k4, ALL_testcerts_k4, betas_match
+
+
 
 
 def transformlabels2(Y, nclus):
@@ -830,3 +886,93 @@ def transformlabels2(Y, nclus):
         for k in range(nclus):
             Ybar[np.where(Y[:, mf] == k)[0], mf] = whoclus[mf, k]
     return Ybar
+
+def transformlabels3(Y, nclus, betas_collect):
+    whoclus = np.full([4, nclus], np.nan)
+    c = np.full([4, nclus, nclus], np.nan)
+    axis1who = [0, 1, 2, 3];
+    axis2who = [1, 2, 3, 0]
+    c[0, :, :] = contingency_matrix(Y[:, 0], Y[:, 1])[:nclus, :nclus]
+    c[1, :, :] = contingency_matrix(Y[:, 1], Y[:, 2])[:nclus, :nclus]
+    c[2, :, :] = contingency_matrix(Y[:, 2], Y[:, 3])[:nclus, :nclus]
+    c[3, :, :] = contingency_matrix(Y[:, 3], Y[:, 0])[:nclus, :nclus]
+    # print(c)
+
+    for k in range(nclus):
+        idx = np.where(c == np.max(c))
+        # print(np.max(c))
+        mf1 = axis1who[idx[0][0]]
+        mf2 = axis2who[idx[0][0]]
+        mf1clus = idx[1][0]
+        mf2clus = idx[2][0]
+
+        if np.isnan(whoclus[mf1, mf1clus]) and np.isnan(whoclus[mf2, mf2clus]):
+            whoclus[mf1, mf1clus] = k
+            whoclus[mf2, mf2clus] = k
+
+            if idx[0][0] == 0:  # we have 0 and 1
+
+                # mf2==1: # fill in 2
+                crit = np.array(c[1, np.where(whoclus[1, :] == k)[0], :])[0]
+                if np.max(crit) > 10:
+                    whoclus[2, np.where(crit == np.max(crit))[0]] = k
+                # mf1==0: # fill in 3
+                crit = np.array(c[3, :, np.where(whoclus[0, :] == k)[0]])[0]
+                if np.max(crit) > 10:
+                    whoclus[3, np.where(crit == np.max(crit))[0]] = k
+
+            elif idx[0][0] == 1:  # we have 1 and 2
+
+                # mf1==1: # fill in 0
+                crit = np.array(c[0, :, np.where(whoclus[1, :] == k)[0]])[0]
+                if np.max(crit) > 10:
+                    whoclus[0, np.where(crit == np.max(crit))[0]] = k
+                # mf2==2: # fill in 3
+                crit = np.array(c[2, np.where(whoclus[2, :] == k)[0], :])[0]
+                if np.max(crit) > 10:
+                    whoclus[3, np.where(crit == np.max(crit))[0]] = k
+
+            elif idx[0][0] == 2:  # we have 2 and 3
+
+                # mf1==2: # fill in 1
+                crit = np.array(c[1, :, np.where(whoclus[2, :] == k)[0]])[0]
+                if np.max(crit) > 10:
+                    whoclus[1, np.where(crit == np.max(crit))[0]] = k
+                # mf2==3: # fill in 0
+                crit = np.array(c[3, np.where(whoclus[3, :] == k)[0], :])[0]
+                if np.max(crit) > 10:
+                    whoclus[0, np.where(crit == np.max(crit))[0]] = k
+
+            elif idx[0][0] == 2:  # we have 3 and 0
+
+                # mf1==3: # fill in 2
+                crit = np.array(c[2, :, np.where(whoclus[3, :] == k)[0]])[0]
+                if np.max(crit) > 10:
+                    whoclus[2, np.where(crit == np.max(crit))[0]] = k
+                # mf2==0: # fill in 1
+                crit = np.array(c[0, np.where(whoclus[0, :] == k)[0], :])[0]
+                if np.max(crit) > 10:
+                    whoclus[1, np.where(crit == np.max(crit))[0]] = k
+
+            # print(whoclus)
+            for l in range(4):
+                c[l, np.where(whoclus[axis1who[l], :] == k)[0], :] = 0
+                c[l, :, np.where(whoclus[axis2who[l], :] == k)[0]] = 0
+
+        else:
+            print('stop')
+            # print(whoclus)
+            # print(c)
+    print(whoclus)
+    Ybar = np.full([Y.shape[0], Y.shape[1]], np.nan)
+    betasmatch = [None]*nclus
+    for k in range(nclus):
+        betasmatch[k]=np.empty([betas_collect[0].shape[0],0])
+    for mf in range(4):
+        for k in range(nclus):
+            Ybar[np.where(Y[:, mf] == k)[0], mf] = whoclus[mf, k]
+            addme=np.expand_dims(betas_collect[mf][:, k],axis=1)
+            if np.isfinite(whoclus[mf, k]):
+                betasmatch[whoclus[mf,k].astype(int)] = np.append(betasmatch[whoclus[mf,k].astype(int)], addme, axis=1)
+
+    return Ybar, betasmatch

@@ -57,6 +57,7 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
     n_vecs = np.full([n_k,n_k, n_k+2],np.nan)
     source_vecs = np.full([n_k, n_k, n_k + 2], np.nan)
     ed_btw_vecs = np.full([n_k, n_k, n_k + 2], np.nan)
+    mse_btw_vecs = np.full([n_k, n_k, n_k + 2], np.nan)
     avgclus = [None] * n_k
     for kthresh in range(n_k):
         avgclus[kthresh] = [None] * n_k
@@ -84,11 +85,14 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
                     # euc dist between them
                     fvpgroup = k_collect[k][:, whichfpvs]
                     tmp=[]
+                    tmp2 = []
                     for f1 in range(len(whichfpvs)):
                         for f2 in range(len(whichfpvs)):
                             if f1!=f2:
                                 tmp.append(spatial.distance.euclidean(fvpgroup[:,f1], fvpgroup[:,f2]))
+                                tmp2.append(vector_mse(fvpgroup[:, f1], fvpgroup[:, f2]))
                     ed_btw_vecs[kthresh,k,c]=np.nanmean(tmp)
+                    mse_btw_vecs[kthresh,k,c]=np.nanmean(tmp2)
                     # average them
                     avgbs[:, c] = np.nanmean(fvpgroup, axis=1)
                 avgclus[kthresh][k]=avgbs
@@ -100,6 +104,7 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
     ###################################################################################################################
     # step 4: calculate match between each solution
     averageerror = np.full([n_k, n_k], np.nan)
+    averageeuc = np.full([n_k, n_k], np.nan)
     for kthresh in range(n_k):
         for k1 in range(n_k):
             if k1>=kthresh:
@@ -112,11 +117,13 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
                             # get the mse between every pair of vectors (each vector=the average of a group of beta vectors
                             # clustered together by the hierarchical clustering algorithm)
                             allmses = np.full([kthresh + 2, kthresh + 2], np.nan)
+                            alleuc = np.full([kthresh + 2, kthresh + 2], np.nan)
                             for c1 in range(kthresh + 2):
                                 for c2 in range(kthresh + 2):
                                     a = avgclus[kthresh][k1][:, c1]
                                     b = avgclus[kthresh][k2][:, c2]
-                                    allmses[c1, c2] = spatial.distance.euclidean(a, b)
+                                    allmses[c1, c2] = vector_mse(a, b)
+                                    alleuc[c1, c2] = spatial.distance.euclidean(a, b)
 
                             # go through the mse matrix and pick the lowest error value --> match those vectors and note the
                             # error, and then move on to find the next pair of best matching vectors never pulling the same
@@ -127,4 +134,4 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
                                 allmses[a[0][0], :] = np.nan
                                 allmses[:, a[1][0]] = np.nan
                 averageerror[kthresh, k1] = np.nanmean(np.array(bestmatch))
-    return averageerror, n_vecs, source_vecs, ed_btw_vecs, avgclus
+    return averageerror,averageeuc, n_vecs, source_vecs, mse_btw_vecs,ed_btw_vecs, avgclus

@@ -1,3 +1,5 @@
+import pickle
+
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy import sparse as sp
@@ -46,6 +48,18 @@ def colorscatter(x, y, d, ax, legendyn=1, aa=1, mm='o',colors=matplotlib.cm.tab1
         ax.scatter(x[findme, 0], x[findme, 1], c=cc, s=d[findme] * 5, alpha=aa, marker=mm)
     if legendyn==1:
         plt.legend(groups)
+
+def loadset(d, s):
+    sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s",
+            "Tct_Scs_tc_sc_s"]
+    dattype = ['MDD_GMM', 'MDD_GMM_null', 'MDD_spectral', 'IXI3_GMM', 'IXI_GMM_null', 'IXI_spectral', 'ALL_GMM']
+    modstr = ['_mod_ctrl_', '_mod_null_', '_mod_', '_mod_', '_mod_null_', '_mod_', '_mod_']
+    pref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
+
+    with open(('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/mod/' + pref[d] + sets[s] +
+               modstr[d] + str(0)), 'rb') as f:
+        mod = pickle.load(f)
+    return mod.data, mod.cv_assignment
 
 
 def contingency_matrix(labels_true, labels_pred, eps=None, sparse=False):
