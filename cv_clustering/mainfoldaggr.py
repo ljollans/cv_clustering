@@ -746,17 +746,12 @@ def remap(prob):
 
 
 
-def get_labels_rand_cert(d, k, n):
-    sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s",
-            "Tct_Scs_tc_sc_s"]
-    dattype = ['MDD_GMM', 'MDD_GMM_null', 'MDD_spectral', 'IXI3_GMM', 'IXI_GMM_null', 'IXI_spectral', 'ALL_GMM']
-    modstr = ['_mod_ctrl_', '_mod_null_', '_mod_', '_mod_', '_mod_null_', '_mod_', '_mod_']
-    modpref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
-    pref = ['FEB_', 'MDD__', 'MDD_spectral_', 'IXI3_', 'IXI2_', 'IXI2_spectral_', 'ALLALL3_']
+def get_labels_rand_cert(d, k, n, sets, dattype, modstr, pref):
+
 
     with open('/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[d] + '/summaries/' + pref[
         d] + 'agglom_moremet.pkl', 'rb') as f:
-        [averageerror, n_vecs, source_vecs, ed_btw_vecs, avgclus] = pickle.load(f)
+        [averagemse, averageerror, n_vecs, source_vecs, mse_btw_vecs,ed_btw_vecs, avgclus] = pickle.load(f)
     print(dattype[d])
     ALL_testlabels_k4 = np.full([n, 12], np.nan)
     ALL_testcerts_k4 = np.full([n, 12], np.nan)

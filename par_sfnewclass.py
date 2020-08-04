@@ -19,28 +19,45 @@ def sf_new_class(savedir,modstr='_mod_'):
 
 
 def do_sf_newcalc(pkl_filename):
-    with open(pkl_filename, "rb") as file:
-        mod = pickle.load(file)
     print(pkl_filename)
-    if hasattr(mod,'cluster_ensembles_labels'):
-        print('already done')
-        pass
-    else:
 
-        origdir = os.getcwd()    
-        try:
-            os.mkdir(pkl_filename + 'tmp')
-        except:
+    try:
+        with open(pkl_filename, "rb") as file:
+            mod = pickle.load(file)
+
+        if hasattr(mod,'cluster_ensembles_labels'):
+            print('already done')
             pass
-        os.chdir(pkl_filename + 'tmp')
-        mod.cluster_ensembles()
-        os.remove('Cluster_Ensembles.h5')
-        os.chdir(origdir)
-        os.rmdir(pkl_filename + 'tmp')
+        else:
 
-    if hasattr(mod,'highest_prob'):
+            try:
+                origdir = os.getcwd()
+                try:
+                    os.mkdir(pkl_filename + 'tmp')
+                except:
+                    pass
+                os.chdir(pkl_filename + 'tmp')
+
+                success = 0;             ctr = 0
+                while success == 0:
+                    try:
+                        mod.cluster_ensembles()
+                        success = 1
+                    except:
+                        ctr += 1
+                        print('fail ' + str(ctr))
+
+                os.remove('Cluster_Ensembles.h5')
+                os.chdir(origdir)
+                os.rmdir(pkl_filename + 'tmp')
+            except:
+                pass
+
+        if hasattr(mod,'highest_prob'):
+            pass
+        else:
+            mod.cluster_ensembles_new_classification()
+            with open(pkl_filename, "wb") as file:
+                pickle.dump(mod, file)
+    except:
         pass
-    else:
-        mod.cluster_ensembles_new_classification()
-        with open(pkl_filename, "wb") as file:
-            pickle.dump(mod, file)

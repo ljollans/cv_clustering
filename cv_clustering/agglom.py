@@ -108,7 +108,8 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
     for kthresh in range(n_k):
         for k1 in range(n_k):
             if k1>=kthresh:
-                bestmatch = []
+                bestmatch1 = []
+                bestmatch2 = []
                 for k2 in range(n_k):
                     if k2 >= kthresh:
                         if k1 != k2:
@@ -130,8 +131,14 @@ def doagglom_moremet(link, mf,n_cv_folds, nfeatures, n_k, filepath2use):
                             # vector twice
                             for c in range(kthresh + 2):
                                 a = np.where(allmses == np.nanmin(allmses))
-                                bestmatch.append(np.nanmin(allmses))
+                                bestmatch1.append(np.nanmin(allmses))
                                 allmses[a[0][0], :] = np.nan
                                 allmses[:, a[1][0]] = np.nan
-                averageerror[kthresh, k1] = np.nanmean(np.array(bestmatch))
+                            for c in range(kthresh + 2):
+                                a = np.where(alleuc == np.nanmin(alleuc))
+                                bestmatch2.append(np.nanmin(alleuc))
+                                alleuc[a[0][0], :] = np.nan
+                                alleuc[:, a[1][0]] = np.nan
+                averageerror[kthresh, k1] = np.nanmean(np.array(bestmatch1))
+                averageeuc[kthresh, k1] = np.nanmean(np.array(bestmatch2))
     return averageerror,averageeuc, n_vecs, source_vecs, mse_btw_vecs,ed_btw_vecs, avgclus

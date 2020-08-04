@@ -13,12 +13,12 @@ from joblib import Parallel, delayed
 sets = ["Tc", "Sc", "TSc", "Tc_tc", "Sc_sc", "TSc_tsc", "Tct_s", "Scs_s", "Tct_Scs_s", "Tct_tc_s", "Scs_sc_s", "Tct_Scs_tc_sc_s"]
 setsize=np.array([82,82,150,84,84,154,82,82,150,84,84,154])
 
-dattype=['MDD_GMM','MDD_GMM_null','MDD_spectral','IXI3_GMM','IXI_GMM_null','IXI_spectral','ALL_GMM']
-modstr2use=['_mod_ctrl_','_mod_null_','_mod_','_mod_','_mod_null_','_mod_','_mod_']
-pref=['FEB_','MDD__','MDD_spectral_','IXI3_','IXI2_','IXI2_spectral_', 'ALLALL3_']
-N=[398,398,398,549,544,544,740]
+dattype=['MDD_GMM','MDD_GMM_null','MDD_spectral','IXI3_GMM','IXI_GMM_null','IXI_spectral','ALL_GMM','ALL_nomdd','MPIHC','MPIHC_null']
+modstr2use=['_mod_ctrl_','_mod_null_','_mod_','_mod_','_mod_null_','_mod_','_mod_','_mod_ctrl_','_mod_','_mod_']
+pref=['FEB_','MDD__','MDD_spectral_','IXI3_','IXI2_','IXI2_spectral_', 'ALLALL3_','ALL_nomdd_','MPIHC_','MPIHC_null_']
+N=[398,398,398,549,544,544,740,740-398,212, 212]
 
-for ii in [2]:
+for ii in [9]:
     input_filedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[ii] + '/mod/' + pref[ii]
     savedir = '/Volumes/ELEMENTS/clustering_pilot/clustering_output/' + dattype[ii] + '/summaries/' + pref[ii]
     print(input_filedir)
@@ -29,12 +29,12 @@ for ii in [2]:
 
     # make sure par_sfnewclass.py is run first (using bb.py) so the hypergraph partitioning is done
 
-    do_level_1 = 0
-    do_level_2 = 0
+    do_level_1 = 1
+    do_level_2 = 1
     do_level_3 = 0
     do_level_35 = 0
     do_level_30 = 1
-    do_level_labels=0
+    do_level_labels=1
 
     pac_lvl1_done = 0
     reclass_lvl2_done = 0
@@ -105,25 +105,34 @@ for ii in [2]:
     if do_level_2==1:
 
         def calcreclass(filestr):
-            try:
-                with open(filestr, "rb") as f:
-                    mod = pickle.load(f)
-                if hasattr(mod,'testset_prob'):
-                    pass
+            print('doing ' + filestr)
+
+            with open(filestr, "rb") as f:
+                mod = pickle.load(f)
+            if hasattr(mod,'cluster_ensembles_labels'):
+                if hasattr(mod,'silhouette2_lvl2'):
+                    if hasattr(mod, 'testset_prob'):
+                        print(' has testset_prob')
+                    else:
+                        mod.sf_class_probas()
                 else:
-                    #mod.cluster_ensembles_new_classification()
-                    mod.sf_class_probas()
-                    with open(filestr, "wb") as f:
-                        pickle.dump(mod,f)
-            except:
-                try:
-                    mod.cluster_ensembles()
                     mod.cluster_ensembles_new_classification()
                     mod.sf_class_probas()
-                    with open(filestr, "wb") as f:
-                        pickle.dump(mod, f)
-                except:
-                    print('failed on ' + filestr)
+            else:
+                success = 0; ctr=0
+                while success==0:
+                    try:
+                        mod.cluster_ensembles()
+                        success=1
+                    except:
+                        ctr+=1
+                        print('fail ' + str(ctr))
+
+
+                mod.cluster_ensembles_new_classification()
+                mod.sf_class_probas()
+            with open(filestr, "wb") as f:
+                pickle.dump(mod, f)
 
 
         if reclass_lvl2_done==0:
@@ -267,7 +276,7 @@ for ii in [2]:
         allbetamatch = [None]*8
         for k in range(8):
             print(k)
-            allsol[k, :, :], allrand[:, :, k], allcert[k, :, :], allbetamatch[k] = get_labels_rand_cert(ii, k + 2, n)
+            allsol[k, :, :], allrand[:, :, k], allcert[k, :, :], allbetamatch[k] = get_labels_rand_cert(ii, k + 2, n, sets, dattype, modstr2use, pref)
 
         with open((savedir + 'allsol_labels_cert.pkl'), 'wb') as f:
             pickle.dump([allsol,allrand,allcert, allbetamatch], f)
